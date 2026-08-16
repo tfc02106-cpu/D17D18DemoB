@@ -3,193 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>D17 軌道健康監測｜2019 / 2026 / 舊補償殘差</title>
-<style>
-:root{
-  --bg:#0b1015;--panel:rgba(18,25,34,.94);--line:#2a3a4c;--tx:#d9e4ee;--tx2:#8fa1b3;--tx3:#627486;
-  --p:#4d9be8;--g:#37c79a;--y:#f2b33d;--r:#ff5a50;--vio:#a98fd6;--mono:Consolas,'Courier New',monospace;
-}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:'Microsoft JhengHei','Noto Sans TC',sans-serif}
-#wrap{position:relative;width:100%;height:100%;overflow:hidden}#c3d{position:absolute;inset:0;width:100%;height:100%;display:block}
-.hud{border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 8px 28px rgba(0,0,0,.22)}
-.col{position:absolute;top:12px;bottom:12px;width:min(410px,34vw);z-index:20;display:flex;flex-direction:column;gap:9px;overflow-y:auto;padding:2px;scrollbar-width:thin;scrollbar-color:#34485d transparent}
-#colL{left:12px}#colR{right:12px;width:min(330px,28vw)}.card{padding:11px 13px}.card h2{font-size:11px;letter-spacing:.14em;color:var(--tx2);margin:0 0 8px}
-.title h1{font-size:17px;margin:0 0 3px}.title .sub{font-size:11.5px;color:var(--tx2);line-height:1.55}
-.modegrid{display:grid;grid-template-columns:1fr;gap:6px}.modebtn,button{font:inherit;color:var(--tx);background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 9px;cursor:pointer}.modebtn{text-align:left}.modebtn b{display:block;font-size:13px}.modebtn span{display:block;font-size:10.5px;color:var(--tx3);margin-top:2px}.modebtn.on{border-color:var(--p);background:rgba(77,155,232,.09)}#mLegacy.on{border-color:var(--r);background:rgba(255,90,80,.09)}
-.row{display:flex;gap:6px}.row button{flex:1}.toggle.on{border-color:var(--g);background:rgba(55,199,154,.08)}#bPitch.on{border-color:var(--p)}#bYaw.on{border-color:var(--g)}#bRoll.on{border-color:var(--y)}
-.small{font-size:10.5px;color:var(--tx3);line-height:1.55}.mono{font-family:var(--mono)}.kv{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font:12.5px/1.6 var(--mono)}.kv .k{color:var(--tx3)}.kv b{font-weight:600}.p{color:var(--p)}.g{color:var(--g)}.y{color:var(--y)}.r{color:var(--r)}.v{color:var(--vio)}
-#chart{display:block;width:100%;height:190px;background:#0c1218;border-radius:7px;border:1px solid rgba(255,255,255,.035)}.legend{font-size:10.5px;color:var(--tx3);margin-top:5px;line-height:1.55}
-.badge{display:inline-block;padding:2px 6px;border-radius:10px;border:1px solid var(--line);font-size:10px}.alert{border-color:#7a3934;background:rgba(255,90,80,.06)}
-#scope{position:absolute;left:50%;bottom:15px;transform:translateX(-50%);width:330px;z-index:25;padding:10px 12px}.scopehd{font-size:11px;color:var(--tx2);letter-spacing:.12em;margin-bottom:6px}#scopeCv{display:block;width:100%;height:105px;border-radius:6px;background:#070a0d}#profCv{display:block;width:100%;height:42px;border-radius:5px;background:#0d1216;margin-top:5px}
-#scope .row{margin-top:7px}#scope .row button{font-size:11px;padding:6px}.riskline{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);font-size:11px;line-height:1.55;color:var(--tx2)}
-.tab{position:absolute;z-index:30;top:50%;transform:translateY(-50%);width:25px;height:56px;border-radius:0 8px 8px 0;padding:0;background:var(--panel)}#tabL{left:0;border-left:0}#tabR{right:0;border-right:0;border-radius:8px 0 0 8px}body.hideL #colL{display:none}body.hideR #colR{display:none}
-#only3d{position:absolute;z-index:30;bottom:12px;left:50%;transform:translateX(-50%);font-size:11px;padding:6px 11px;background:var(--panel)}body.only3d .col,body.only3d #scope{display:none}
-@media(max-width:900px){#colL{width:42vw}#colR{width:34vw}#scope{width:300px}}@media(max-width:700px){#colL{width:54vw}#colR{width:46vw}.title h1{font-size:14px}#scope{width:270px}}
-</style>
+<title>D17 軌道健康監測｜三模式比較</title>
+<style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}#scene{position:absolute;inset:0;width:100%;height:100%;border:0}#loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;color:#D9E4EE;font:14px "Microsoft JhengHei",sans-serif}</style>
 </head>
 <body>
-<div id="wrap">
-<canvas id="c3d"></canvas>
-<button class="tab" id="tabL">‹</button><button class="tab" id="tabR">›</button><button id="only3d">只看 3D</button>
-
-<div class="col" id="colL">
-  <div class="hud card title">
-    <h1>D17 軌道健康監測與阿貝補償</h1>
-    <div class="sub">三模式同步切換：2019 基準、2026 健康監測、2026 現況沿用 2019 舊補償。核心量為 <b>Cβ(0,x)=85[β(x)−β(0)]</b>。</div>
-  </div>
-  <div class="hud card">
-    <h2>三模式</h2>
-    <div class="modegrid">
-      <button class="modebtn on" id="m2019"><b>① 2019 基準</b><span>11 站、1 m 間距；原 D17 評估資料</span></button>
-      <button class="modebtn" id="m2026"><b>② 2026 健康監測</b><span>21 站、0.5 m 間距；每站三次平均</span></button>
-      <button class="modebtn" id="mLegacy"><b>③ 2026 + 沿用 2019 補償</b><span>顯示舊補償與現況需求之殘留失配</span></button>
-    </div>
-  </div>
-  <div class="hud card">
-    <h2 id="chartTitle">2019 Pitch 實測輪廓</h2>
-    <canvas id="chart" width="760" height="380"></canvas>
-    <div class="legend" id="chartLegend"></div>
-  </div>
-  <div class="hud card">
-    <h2>監測判讀</h2>
-    <div class="kv" id="stats"></div>
-    <div class="riskline" id="interpret"></div>
-  </div>
-  <div class="hud card">
-    <h2>不確定度與準確度</h2>
-    <div class="small" id="uncText"></div>
-  </div>
-</div>
-
-<div class="col" id="colR">
-  <div class="hud card">
-    <h2>3D / 姿態控制</h2>
-    <div class="row"><button class="toggle on" id="bPitch">Pitch</button><button class="toggle" id="bYaw">Yaw</button><button class="toggle" id="bRoll">Roll</button></div>
-    <div class="row" style="margin-top:6px"><button class="toggle on" id="bMove">平台行進</button><button class="toggle on" id="bBeam">雷射光束</button></div>
-    <div class="small" style="margin-top:6px">Pitch 使用目前模式資料；Yaw / Roll 僅為運動示意，不列入 D17 健康監測結論。</div>
-  </div>
-  <div class="hud card">
-    <h2>即時量測值</h2>
-    <div class="kv">
-      <span class="k">位置 x</span><b id="rX">0.00 m</b>
-      <span class="k">β(x)</span><b class="p" id="rBeta">—</b>
-      <span class="k">單點 dβ</span><b class="y" id="rSingle">—</b>
-      <span class="k">相對原點 Cβ</span><b class="g" id="rCorr">—</b>
-      <span class="k" id="oldK">2019 舊補償</span><b class="v" id="rOld">—</b>
-      <span class="k" id="resK">補償失配殘差</span><b class="r" id="rResidual">—</b>
-    </div>
-    <div class="small" style="margin-top:7px">單點 <b>dβ</b> 不是校正報告的申報修正量；真正進入 0→x 長度結果的是兩端點差 <b>Cβ(0,x)</b>。</div>
-  </div>
-  <div class="hud card">
-    <h2>健康監測閉環</h2>
-    <div class="small">監測 β(x) → 判定局部變化 → 必要區段加密 → 更新阿貝補償 → 更新不確定度預算。<br><br><b style="color:var(--r)">不監測而沿用舊補償</b>時，若軌道輪廓已改變，補償失配會直接留下位置相關殘差；同時既有不確定度預算可能不再代表當前量測鏈。</div>
-  </div>
-  <div class="hud card">
-    <h2>D17 / D18 配置說明</h2>
-    <div class="small">3D 仍保留 D17 左側與 D18 右側配置。此頁的健康監測定量結論只使用 D17 實測 Pitch 與 85 mm 垂直阿貝臂；D18 不作為本頁「準確度變差」的直接證據。</div>
-  </div>
-</div>
-
-<div class="hud" id="scope">
-  <div class="scopehd">顯微鏡離焦敏感度情境｜非 D17 實測離焦輪廓</div>
-  <canvas id="scopeCv" width="306" height="105"></canvas><canvas id="profCv" width="306" height="42"></canvas>
-  <div class="kv" style="font-size:10.5px;margin-top:5px">
-    <span class="k">情境 Δz</span><b id="fZ">0 µm</b><span class="k">模糊直徑 B</span><b id="fB">2.4 µm</b><span class="k">DOF</span><b id="fD">7.0 µm</b>
-  </div>
-  <div class="row"><button id="fFocus">在此對焦</button><button id="fNA">NA 0.28 / 0.05</button></div>
-  <div class="small" style="margin-top:5px">約 500 µm 僅作敏感度情境，用來說明離焦可能如何劣化刻線判讀；現有基座資料不足以建立可靠實測直線度。</div>
-</div>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<div id="loading">載入原版 D17/D18 3D 場景…</div>
+<iframe id="scene" src="scene.html" title="D17 / D18 3D scene"></iframe>
 <script>
-'use strict';
-const DZ_MM=85, ARCSEC_PER_MMPM=206.264806247;
-const D19={name:'2019',pos:[0,1,2,3,4,5,6,7,8,9,10],mean:[0.997,1.003,1.011,0.591,1.023,0.993,0.957,1.012,1.013,0.980,0.994],sd:[0.0029,0.0010,0.0010,0.0586,0.0051,0.0035,0.0053,0.0051,0.0050,0.0045,0.0076]};
-const D26={name:'2026',pos:[0,.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10],mean:[2.7623333333,2.811,2.6723333333,2.764,2.6766666667,2.745,2.9173333333,2.4033333333,2.5433333333,2.891,2.8033333333,2.849,2.674,2.78,2.6596666667,2.8096666667,2.7406666667,2.7716666667,2.7236666667,2.7453333333,2.7766666667],sd:[0.00378594,0.01385641,0.01069268,0.00692820,0.01792577,0.00519615,0.03066486,0.01962991,0.00472582,0.00953939,0.01331666,0.00435890,0.02165641,0.00264575,0.00152753,0.01011599,0.00665833,0.01274101,0.00577350,0.00896289,0.00923760]};
-let mode='2019';
-const state={pitch:true,yaw:false,roll:false,move:true,beam:true};
-const $=id=>document.getElementById(id);
-function interp(x,xs,ys){if(x<=xs[0])return ys[0];if(x>=xs[xs.length-1])return ys[ys.length-1];for(let i=1;i<xs.length;i++)if(x<=xs[i]){let t=(x-xs[i-1])/(xs[i]-xs[i-1]);return ys[i-1]*(1-t)+ys[i]*t}return ys[ys.length-1]}
-function betaAt(D,x){return interp(x,D.pos,D.mean)}
-function sdAt(D,x){return interp(x,D.pos,D.sd)}
-function corrAt(D,x){return DZ_MM*(betaAt(D,x)-D.mean[0])}
-function residualAt(x){return corrAt(D26,x)-corrAt(D19,x)}
-function activeD(){return mode==='2019'?D19:D26}
-function avg(a){return a.reduce((s,v)=>s+v,0)/a.length}
-function fmt(v,n=2){return (v>=0?'+':'')+v.toFixed(n)}
-function modeName(){return mode==='2019'?'2019 基準':mode==='2026'?'2026 健康監測':'2026 現況 + 2019 舊補償'}
-
-function setMode(m){mode=m;['2019','2026','Legacy'].forEach(k=>{let b=$('m'+k);if(b)b.classList.toggle('on',(m==='legacy'&&k==='Legacy')||m===k)});updateStatic();drawChart(window.__x||0)}
-$('m2019').onclick=()=>setMode('2019');$('m2026').onclick=()=>setMode('2026');$('mLegacy').onclick=()=>setMode('legacy');
-function bindToggle(id,key){$(id).onclick=()=>{state[key]=!state[key];$(id).classList.toggle('on',state[key])}}
-bindToggle('bPitch','pitch');bindToggle('bYaw','yaw');bindToggle('bRoll','roll');bindToggle('bMove','move');bindToggle('bBeam','beam');
-$('tabL').onclick=()=>document.body.classList.toggle('hideL');$('tabR').onclick=()=>document.body.classList.toggle('hideR');$('only3d').onclick=()=>{document.body.classList.toggle('only3d');$('only3d').textContent=document.body.classList.contains('only3d')?'顯示面板':'只看 3D'};
-
-function updateStatic(){
-  const s=$('stats'),i=$('interpret'),u=$('uncText');
-  if(mode==='2019'){
-    $('chartTitle').textContent='2019 Pitch 實測輪廓（1 m 網格）';
-    $('chartLegend').innerHTML='<span class="badge">實測</span> 3 m 平均 0.591 mm/m；相對 0 m 的 Cβ 約 −34.5 µm。';
-    s.innerHTML='<span class="k">取樣</span><b>11 站 / 1 m</b><span class="k">最大站內 SD</span><b>0.0586 mm/m</b><span class="k">0→3 m Cβ</span><b class="r">−34.5 µm</b><span class="k">0→10 m Cβ</span><b>−0.3 µm</b>';
-    i.innerHTML='2019 年的局部坡谷已證明：即使全行程頭尾修正接近零，局部申報點仍可能有數十 µm 的阿貝修正需求。';
-    u.innerHTML='原 D17 預算採最大站內標準差，阿貝補償分量為 <b>4.981 µm</b>。這代表補償量本身的不確定度，不是未修正阿貝誤差。';
-  }else if(mode==='2026'){
-    $('chartTitle').textContent='2019 / 2026 Pitch 輪廓比較（各自去平均）';
-    $('chartLegend').innerHTML='<span class="badge">2019</span> 灰虛線　<span class="badge">2026</span> 藍實線。去除固定角度水準後比較空間輪廓；2026 為 0.5 m 加密取樣。';
-    s.innerHTML='<span class="k">取樣</span><b>21 站 / 0.5 m</b><span class="k">3.0→3.5 m Δβ</span><b class="r">−0.514 mm/m</b><span class="k">等效局部變化</span><b class="r">43.7 µm</b><span class="k">一般區段重複性</span><b>約 2.3–2.7× 跡象</b>';
-    i.innerHTML='2026 的谷深與 2019 同量級，但取樣位置與背景起伏已不同；這正是要定期重測 β(x)，而不能永久沿用舊補償表的原因。';
-    u.innerHTML='以敏感度分析粗估，補償內插不確定度約由 <b>10.3 → 12.6 µm</b>；角度量測工作點升高後，水平儀量測鏈換算分量約由 <b>0.115 → 1.01 µm</b>。這些數值用於說明預算需隨健康狀態更新。';
-  }else{
-    $('chartTitle').textContent='沿用 2019 補償：舊補償 vs 2026 現況需求';
-    $('chartLegend').innerHTML='<span class="badge">紫</span> 2019 舊補償　<span class="badge">綠</span> 2026 應有補償　<span class="badge alert">紅</span> 失配殘差 = 現況需求 − 舊補償。';
-    const xs=D26.pos,rr=xs.map(residualAt),mx=Math.max(...rr.map(Math.abs)),im=rr.findIndex(v=>Math.abs(v)===mx);
-    s.innerHTML='<span class="k">最大示意殘差</span><b class="r">'+fmt(rr[im],1)+' µm</b><span class="k">位置</span><b>'+xs[im].toFixed(1)+' m</b><span class="k">原因</span><b>補償輪廓失配</b><span class="k">前提</span><b>座標已正確登錄</b>';
-    i.innerHTML='<b style="color:var(--r)">這個模式就是健康監測必要性的核心。</b> 若 2026 軌道狀態已改變卻仍套用 2019 補償，位置相關殘差會直接留在校正結果中。數值是兩次實測輪廓的差值示意，不等同於獨立真值驗證出的實際 bias。';
-    u.innerHTML='因此健康監測不是只為「看軌道有沒有變」，而是為了 <b>更新補償</b> 與 <b>維持不確定度預算有效性</b>。不監測會增加系統偏差與實際不確定度高於既有預算的風險。';
-  }
-}
-
-const chart=$('chart'),ctx=chart.getContext('2d');
-function drawChart(cur){
-  const W=chart.width,H=chart.height,L=58,R=18,T=20,B=42;ctx.clearRect(0,0,W,H);ctx.fillStyle='#0c1218';ctx.fillRect(0,0,W,H);
-  const xpx=x=>L+(W-L-R)*x/10;
-  let series=[],ymin,ymax,label;
-  if(mode==='2019'){series=[{D:D19,ys:D19.mean,c:'#4d9be8',dash:[]}];ymin=.52;ymax=1.08;label='β (mm/m)'}
-  else if(mode==='2026'){
-    let a19=avg(D19.mean),a26=avg(D26.mean);series=[{D:D19,ys:D19.mean.map(v=>v-a19),c:'#8fa1b3',dash:[7,5]},{D:D26,ys:D26.mean.map(v=>v-a26),c:'#4d9be8',dash:[]}];ymin=-.42;ymax=.22;label='β − 全站平均 (mm/m)'
-  }else{
-    const old=D26.pos.map(x=>corrAt(D19,x)),now=D26.pos.map(x=>corrAt(D26,x)),res=D26.pos.map(residualAt);series=[{D:{pos:D26.pos},ys:old,c:'#a98fd6',dash:[7,5]},{D:{pos:D26.pos},ys:now,c:'#37c79a',dash:[]},{D:{pos:D26.pos},ys:res,c:'#ff5a50',dash:[]}];ymin=-42;ymax=55;label='Cβ / 殘差 (µm)'
-  }
-  const ypx=y=>T+(H-T-B)*(1-(y-ymin)/(ymax-ymin));
-  ctx.strokeStyle='#293846';ctx.lineWidth=1;ctx.setLineDash([]);for(let k=0;k<=5;k++){let y=ymin+(ymax-ymin)*k/5,py=ypx(y);ctx.beginPath();ctx.moveTo(L,py);ctx.lineTo(W-R,py);ctx.stroke();ctx.fillStyle='#718496';ctx.font='18px Consolas';ctx.fillText(y.toFixed(Math.abs(ymax-ymin)<2?2:0),4,py+5)}
-  for(let x=0;x<=10;x++){let px=xpx(x);ctx.strokeStyle='rgba(70,90,110,.16)';ctx.beginPath();ctx.moveTo(px,T);ctx.lineTo(px,H-B);ctx.stroke();ctx.fillStyle='#718496';ctx.font='18px Consolas';ctx.fillText(x+' m',px-14,H-13)}
-  ctx.save();ctx.translate(16,(H-B+T)/2);ctx.rotate(-Math.PI/2);ctx.fillStyle='#8fa1b3';ctx.font='18px sans-serif';ctx.fillText(label,0,0);ctx.restore();
-  series.forEach(S=>{ctx.strokeStyle=S.c;ctx.lineWidth=3;ctx.setLineDash(S.dash);ctx.beginPath();S.D.pos.forEach((x,i)=>{let px=xpx(x),py=ypx(S.ys[i]);i?ctx.lineTo(px,py):ctx.moveTo(px,py)});ctx.stroke();ctx.setLineDash([]);S.D.pos.forEach((x,i)=>{ctx.fillStyle=S.c;ctx.beginPath();ctx.arc(xpx(x),ypx(S.ys[i]),4,0,Math.PI*2);ctx.fill()})});
-  ctx.strokeStyle='#f2b33d';ctx.lineWidth=2;ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(xpx(cur),T);ctx.lineTo(xpx(cur),H-B);ctx.stroke();ctx.setLineDash([]);
-}
-
-const renderer=new THREE.WebGLRenderer({canvas:$('c3d'),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b1015);const camera=new THREE.PerspectiveCamera(42,1,.05,100);scene.add(new THREE.AmbientLight(0xffffff,.65));let dl=new THREE.DirectionalLight(0xffffff,.85);dl.position.set(5,8,6);scene.add(dl);
-const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.52,metalness:.35},o));const world=new THREE.Group();scene.add(world);
-const granite=new THREE.Mesh(new THREE.BoxGeometry(12,.45,2.0),M(0x30363d,{roughness:.85,metalness:.05}));granite.position.set(0,-.40,0);world.add(granite);
-for(let j=-5;j<=5;j++){let cut=new THREE.Mesh(new THREE.BoxGeometry(.012,.46,2.01),M(0x11161b,{roughness:.9}));cut.position.set(j,-.40,0);world.add(cut)}
-[-.32,.32].forEach(z=>{let rail=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,11.5,24),M(0xbfc9d3,{roughness:.18,metalness:.9}));rail.rotation.z=Math.PI/2;rail.position.set(0,-.06,z);world.add(rail)});
-const scale=new THREE.Mesh(new THREE.BoxGeometry(10.8,.045,.16),M(0xb5bec8,{roughness:.25,metalness:.78}));scale.position.set(0,.115,.40);world.add(scale);
-const stage=new THREE.Group();stage.position.set(-5,.08,0);world.add(stage);const body=new THREE.Mesh(new THREE.BoxGeometry(1.05,.22,.78),M(0x202832,{metalness:.55}));body.position.y=.03;stage.add(body);const tower=new THREE.Mesh(new THREE.BoxGeometry(.16,.55,.16),M(0x151a20,{metalness:.5}));tower.position.set(.23,.34,.40);stage.add(tower);const ccd=new THREE.Mesh(new THREE.BoxGeometry(.22,.18,.22),M(0x262d35));ccd.position.set(.23,.67,.40);stage.add(ccd);const retro=new THREE.Mesh(new THREE.BoxGeometry(.15,.15,.15),M(0xe0e7ee,{metalness:.9,roughness:.1}));retro.position.set(-.37,.20,.40);stage.add(retro);
-const d17=new THREE.Mesh(new THREE.BoxGeometry(.42,.20,.20),M(0xa8261c,{metalness:.5}));d17.position.set(-6.2,.20,.40);world.add(d17);const d18=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.34,24),M(0x242a31,{metalness:.65}));d18.rotation.z=Math.PI/2;d18.position.set(6.2,.65,0);world.add(d18);
-function line(c){let l=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:c}));world.add(l);return l}const beam=line(0xff4a3d),beam18=line(0x37c79a);
-const ghost=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.05,.55,.78)),new THREE.LineBasicMaterial({color:0x536679}));ghost.position.set(-5,.26,0);world.add(ghost);
-let th=.72,ph=1.03,dist=14,tth=th,tph=ph,td=dist;const target=new THREE.Vector3(0,.05,0);let drag=0,px=0,py=0;const cv=$('c3d');cv.onpointerdown=e=>{drag=e.button===2?2:1;px=e.clientX;py=e.clientY;cv.setPointerCapture(e.pointerId)};cv.onpointerup=()=>drag=0;cv.onpointermove=e=>{if(!drag)return;let dx=e.clientX-px,dy=e.clientY-py;px=e.clientX;py=e.clientY;if(drag===1){tth+=dx*.005;tph=Math.max(.08,Math.min(1.5,tph-dy*.005))}};cv.onwheel=e=>{e.preventDefault();td=Math.max(5,Math.min(25,td*(1+e.deltaY*.001))) };cv.oncontextmenu=e=>e.preventDefault();
-function resize(){let r=cv.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}addEventListener('resize',resize);resize();
-
-let NA=.28,focusRef=0;const LAM=.55,LINEW=150,FOV=880,sc=$('scopeCv'),sctx=sc.getContext('2d'),pc=$('profCv'),pctx=pc.getContext('2d');
-function defocusScenario(x){return -497*Math.exp(-Math.pow((x-4.7)/2.05,2))}
-function erf(x){let s=x<0?-1:1;x=Math.abs(x);let t=1/(1+.3275911*x);let y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-.284496736)*t+.254829592)*t*Math.exp(-x*x);return s*y}
-function drawScope(x){let dz=defocusScenario(x)-focusRef,Bg=2*NA*Math.abs(dz),Bd=1.22*LAM/NA,B=Math.sqrt(Bg*Bg+Bd*Bd),sig=B/2.355,W=sc.width,H=sc.height,um=FOV/W,img=sctx.createImageData(W,H);function prof(u){let h=LINEW/2;if(sig<.05)return Math.abs(u)<h?0:1;let rr=.5*(erf((u+h)/(Math.SQRT2*sig))-erf((u-h)/(Math.SQRT2*sig)));return 1-rr}for(let xx=0;xx<W;xx++){let g=Math.round(25+180*prof((xx-W/2)*um));for(let yy=0;yy<H;yy++){let p=(yy*W+xx)*4;img.data[p]=g;img.data[p+1]=g+3;img.data[p+2]=g+7;img.data[p+3]=255}}sctx.putImageData(img,0,0);sctx.strokeStyle='rgba(255,90,80,.75)';sctx.beginPath();sctx.moveTo(W/2,0);sctx.lineTo(W/2,H);sctx.stroke();pctx.clearRect(0,0,pc.width,pc.height);pctx.strokeStyle='#4d9be8';pctx.beginPath();for(let xx=0;xx<pc.width;xx++){let v=prof((xx-pc.width/2)*(FOV/pc.width)),yy=pc.height-4-v*(pc.height-8);xx?pctx.lineTo(xx,yy):pctx.moveTo(xx,yy)}pctx.stroke();$('fZ').textContent=fmt(dz,0)+' µm';$('fB').textContent=B.toFixed(1)+' µm';$('fD').textContent=(LAM/(NA*NA)).toFixed(1)+' µm'}
-$('fFocus').onclick=()=>{focusRef=defocusScenario(window.__x||0);drawScope(window.__x||0)};$('fNA').onclick=()=>{NA=NA===.28?.05:.28;$('fNA').textContent='NA '+NA.toFixed(2)+' / '+(NA===.28?'0.05':'0.28');drawScope(window.__x||0)};
-
-function updateRead(x){let D=activeD(),b=betaAt(D,x),single=DZ_MM*b,c=corrAt(D,x),old=corrAt(D19,x),res=mode==='legacy'?residualAt(x):NaN;$('rX').textContent=x.toFixed(2)+' m';$('rBeta').textContent=b.toFixed(4)+' mm/m ('+(b*ARCSEC_PER_MMPM).toFixed(1)+'″)';$('rSingle').textContent=fmt(single,1)+' µm';$('rCorr').textContent=fmt(c,1)+' µm';$('oldK').style.display=$('rOld').style.display=mode==='legacy'?'':'none';$('resK').style.display=$('rResidual').style.display=mode==='legacy'?'':'none';if(mode==='legacy'){$('rOld').textContent=fmt(old,1)+' µm';$('rResidual').textContent=fmt(res,1)+' µm'}}
-function animate(ms){let t=ms/1000,u=(t%60)/30,tri=u<=1?u:2-u,x=state.move?tri*10:5;window.__x=x;let D=activeD(),b=betaAt(D,x),mean=avg(D.mean),dev=(b-mean)*1e-3;let betaVis=state.pitch?dev*180:0,yawVis=state.yaw?.035*Math.sin(t*1.3):0,rollVis=state.roll?.035*Math.sin(t*1.1+1.7):0;stage.rotation.z=-betaVis;stage.rotation.y=yawVis;stage.rotation.x=rollVis;stage.position.x=x-5;ghost.position.x=x-5;beam.visible=beam18.visible=state.beam;if(state.beam){let wp=new THREE.Vector3();retro.getWorldPosition(wp);beam.geometry.setFromPoints([new THREE.Vector3(-6,.20,.40),wp]);beam18.geometry.setFromPoints([new THREE.Vector3(6,.65,0),new THREE.Vector3(stage.position.x,.65,0)])}updateRead(x);drawChart(x);drawScope(x);th+=(tth-th)*.12;ph+=(tph-ph)*.12;dist+=(td-dist)*.12;camera.position.set(target.x+dist*Math.sin(ph)*Math.cos(th),target.y+dist*Math.cos(ph),target.z+dist*Math.sin(ph)*Math.sin(th));camera.lookAt(target);renderer.render(scene,camera);requestAnimationFrame(animate)}
-updateStatic();drawChart(0);drawScope(0);requestAnimationFrame(animate);
+(function(){
+ const frame=document.getElementById('scene');
+ frame.addEventListener('load',function(){
+   document.getElementById('loading').style.display='none';
+   const d=frame.contentDocument;
+   const s=d.createElement('style');s.textContent="\n#hmMode,#hmChartCard,#hmFocus{padding:10px 12px}\n#hmMode .mgrid{display:grid;grid-template-columns:1fr;gap:6px}\n#hmMode button{display:block!important;text-align:left!important;padding:8px 10px!important}\n#hmMode button b{display:block;font-size:13px}\n#hmMode button small{display:block;color:var(--tx3);font-size:10.5px;margin-top:2px}\n#hmMode button.hmOn{border-color:var(--pitch);background:rgba(77,155,232,.10)}\n#hmMode #hm2026.hmOn{border-color:var(--yaw);background:rgba(55,199,154,.10)}\n#hmMode #hmLegacy.hmOn{border-color:var(--laser);background:rgba(255,74,61,.10)}\n#hmChart{display:block;width:100%;height:190px;border:1px solid rgba(120,145,165,.18);border-radius:6px;background:#0b1117}\n#hmChartTitle,#hmFocusHead{font-size:10.8px;color:var(--tx2);letter-spacing:.14em;margin-bottom:6px}\n#hmExplain,#hmLegend,#hmFocusSub{font-size:10.7px;color:var(--tx2);line-height:1.55;margin-top:5px}\n#hmFocusMain{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--roll);line-height:1.25}\n#hm3DTag{position:absolute;z-index:45;left:50%;top:14px;transform:translateX(-50%);padding:7px 12px;border:1px solid var(--roll);border-radius:8px;background:rgba(11,16,21,.90);color:#FFE3AD;font-size:12px;pointer-events:none;white-space:nowrap}\n#hmRead{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-family:var(--mono);font-size:12px;line-height:1.75}\n#hmRead .lab{color:var(--tx3)} #hmRead .c{color:var(--yaw)} #hmRead .res{color:var(--laser)}\n";d.head.appendChild(s);
+   const inj=d.createElement('script');inj.textContent="\n(function(){\n  const D19={pos:[0,1,2,3,4,5,6,7,8,9,10],mean:[0.997,1.003,1.011,0.591,1.023,0.993,0.957,1.012,1.013,0.980,0.994],sd:[0.0029,0.0010,0.0010,0.0586,0.0051,0.0035,0.0053,0.0051,0.0050,0.0045,0.0076]};\n  const D26={pos:[0,.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10],mean:[2.7623333333,2.811,2.6723333333,2.764,2.6766666667,2.745,2.9173333333,2.4033333333,2.5433333333,2.891,2.8033333333,2.849,2.674,2.78,2.6596666667,2.8096666667,2.7406666667,2.7716666667,2.7236666667,2.7453333333,2.7766666667],sd:[0.00378594,0.01385641,0.01069268,0.00692820,0.01792577,0.00519615,0.03066486,0.01962991,0.00472582,0.00953939,0.01331666,0.00435890,0.02165641,0.00264575,0.00152753,0.01011599,0.00665833,0.01274101,0.00577350,0.00896289,0.00923760]};\n  const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;\n  const lerp=(x,xs,ys)=>{if(x<=xs[0])return ys[0];if(x>=xs[xs.length-1])return ys[ys.length-1];for(let i=1;i<xs.length;i++)if(x<=xs[i]){let q=(x-xs[i-1])/(xs[i]-xs[i-1]);return ys[i-1]*(1-q)+ys[i]*q}return ys[ys.length-1]};\n  const corr=(dat,x)=>85*(lerp(x,dat.pos,dat.mean)-dat.mean[0]);\n  const fmt=(v,n=1)=>(v>=0?'+':'')+v.toFixed(n);\n  let mode='2026';\n\n  const oldData=document.getElementById('dataCard'); if(oldData)oldData.style.display='none';\n  const oldRange=document.getElementById('rangeCard'); if(oldRange)oldRange.style.display='none';\n  const oldCap=document.getElementById('cap'); if(oldCap)oldCap.style.display='none';\n  const title=document.querySelector('#title h1'); if(title)title.textContent='D17 軌道健康監測｜原版 3D 保留';\n  const sub=document.querySelector('#title .sub'); if(sub)sub.textContent='三模式只改資料與比較導引，不改原本 D17 / D18 機構、光路與顯微鏡模型。';\n  const bData=document.getElementById('bDATA'); if(bData){bData.disabled=true;bData.innerHTML='<span>資料由三模式控制</span><span class=\"dot\"></span>'}\n\n  const col=document.getElementById('colL');\n  const mk=(id,html)=>{const e=document.createElement('div');e.className='hud';e.id=id;e.innerHTML=html;return e};\n  const modeCard=mk('hmMode',\n    '<div style=\"font-size:11px;color:var(--tx2);letter-spacing:.14em;margin-bottom:7px\">三模式｜先選，再看黃色 3D 區與差異圖</div>'+\n    '<div class=\"mgrid\">'+\n    '<button id=\"hm2019\"><b>① 2019 基準</b><small>看 3.0 m 局部坡谷與原補償</small></button>'+\n    '<button id=\"hm2026\"><b>② 2026 健康監測</b><small>直接疊 2019 / 2026，感受輪廓差異</small></button>'+\n    '<button id=\"hmLegacy\"><b>③ 2026 沿用 2019 舊補償</b><small>看紅色殘差，直接對應準確度風險</small></button>'+\n    '</div>');\n  const chartCard=mk('hmChartCard',\n    '<div id=\"hmChartTitle\">② 2026：2019 / 2026 疊圖</div>'+\n    '<canvas id=\"hmChart\" width=\"360\" height=\"190\"></canvas>'+\n    '<div id=\"hmExplain\"></div><div id=\"hmLegend\"></div>');\n  const focusCard=mk('hmFocus',\n    '<div id=\"hmFocusHead\">差異看這裡</div><div id=\"hmFocusMain\"></div><div id=\"hmFocusSub\"></div>');\n  const titleCard=document.getElementById('title');\n  col.insertBefore(modeCard,titleCard.nextSibling);\n  col.insertBefore(chartCard,modeCard.nextSibling);\n  col.insertBefore(focusCard,chartCard.nextSibling);\n\n  const wrap=document.getElementById('wrap');\n  const tag=document.createElement('div');tag.id='hm3DTag';wrap.appendChild(tag);\n\n  const read=document.getElementById('read');\n  const extra=document.createElement('div');extra.id='hmRead';\n  extra.innerHTML='<span class=\"lab\">Cβ(0,x)</span> <span class=\"c\" id=\"hmC\">—</span> µm<br><span class=\"lab\">舊補償殘差</span> <span class=\"res\" id=\"hmRes\">—</span>';\n  read.appendChild(extra);\n  const note=document.getElementById('note');\n  note.innerHTML='真正進入 0→x 長度結果的是 <b>Cβ(0,x)=85[β(x)−β(0)]</b>；單點 dβ 僅作幾何理解。第三模式紅色殘差＝2026 應補償−2019 舊補償。';\n\n  const scope=document.getElementById('scopeCard');\n  if(scope)scope.querySelectorAll('div').forEach(e=>{if(e.textContent.includes('0812 實測積分'))e.textContent='離焦量為敏感度情境，非目前 D17 實測離焦輪廓；用來觀察 NA 與離焦對刻線判讀的影響。'});\n\n  const bandMat=new THREE.MeshBasicMaterial({color:0x37C79A,transparent:true,opacity:.19,depthWrite:false});\n  const band=new THREE.Mesh(new THREE.BoxGeometry(.72,.020,1.75),bandMat);band.position.set(-1.75,GRA_TOP+.038,.10);world.add(band);\n  const poleMat=new THREE.MeshBasicMaterial({color:0xF2B33D,transparent:true,opacity:.75});\n  const pole=new THREE.Mesh(new THREE.BoxGeometry(.025,.65,.025),poleMat);pole.position.set(-1.75,.18,1.02);world.add(pole);\n  function line(color){const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-.72,0,0),new THREE.Vector3(.72,0,0)]);const l=new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:true,opacity:.9}));world.add(l);return l}\n  const l19=line(0x4D9BE8),l26=line(0x37C79A);\n  const lDelta=line(0xFF4A3D);lDelta.geometry.setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);\n  const vis=v=>Math.max(-.18,Math.min(.18,v/.55*.18));\n\n  const cv=document.getElementById('hmChart'),cx=cv.getContext('2d');\n  function drawChart(x){\n    const W=cv.width,H=cv.height,L=46,R=10,T=10,B=27,xp=z=>L+(W-L-R)*z/10;\n    cx.clearRect(0,0,W,H);cx.fillStyle='#0b1117';cx.fillRect(0,0,W,H);\n    cx.fillStyle=mode==='legacy'?'rgba(255,74,61,.09)':'rgba(242,179,61,.08)';cx.fillRect(xp(2.75),T,xp(3.75)-xp(2.75),H-T-B);\n    let curves=[],ylab='';\n    if(mode==='2019'){const m=mean(D19.mean);curves=[{p:D19.pos,v:D19.mean.map(y=>y-m),c:'#4D9BE8',dash:[]}];ylab='相對平均 mm/m'}\n    else if(mode==='2026'){const a=mean(D19.mean),b=mean(D26.mean);curves=[{p:D19.pos,v:D19.mean.map(y=>y-a),c:'#6f8dab',dash:[4,3]},{p:D26.pos,v:D26.mean.map(y=>y-b),c:'#37C79A',dash:[]}];ylab='相對各自平均 mm/m'}\n    else{const xs=D26.pos;curves=[{p:xs,v:xs.map(z=>corr(D19,z)),c:'#4D9BE8',dash:[4,3]},{p:xs,v:xs.map(z=>corr(D26,z)),c:'#37C79A',dash:[]},{p:xs,v:xs.map(z=>corr(D26,z)-corr(D19,z)),c:'#FF4A3D',dash:[]}];ylab='Cβ / 殘差 µm'}\n    let vals=curves.flatMap(q=>q.v),mn=Math.min(...vals),mx=Math.max(...vals),sp=Math.max(mx-mn,mode==='legacy'?20:.12);mn-=sp*.14;mx+=sp*.14;\n    const yp=y=>T+(H-T-B)*(1-(y-mn)/(mx-mn));\n    cx.strokeStyle='#2A3A4C';cx.lineWidth=1;cx.setLineDash([]);cx.beginPath();cx.moveTo(L,T);cx.lineTo(L,H-B);cx.lineTo(W-R,H-B);cx.stroke();\n    cx.font='10px Consolas';cx.fillStyle='#708294';for(let z=0;z<=10;z+=2)cx.fillText(z+'m',xp(z)-7,H-8);\n    for(let k=0;k<5;k++){let v=mn+(mx-mn)*k/4,y=yp(v);cx.strokeStyle='rgba(90,110,128,.16)';cx.beginPath();cx.moveTo(L,y);cx.lineTo(W-R,y);cx.stroke();cx.fillStyle='#708294';cx.fillText(mode==='legacy'?v.toFixed(0):v.toFixed(2),2,y+3)}\n    if(mn<0&&mx>0){cx.strokeStyle='rgba(217,228,238,.22)';cx.setLineDash([2,3]);cx.beginPath();cx.moveTo(L,yp(0));cx.lineTo(W-R,yp(0));cx.stroke()}\n    curves.forEach((q,j)=>{cx.strokeStyle=q.c;cx.lineWidth=(mode==='legacy'&&j===2)?2.5:1.8;cx.setLineDash(q.dash);cx.beginPath();q.p.forEach((z,i)=>{i?cx.lineTo(xp(z),yp(q.v[i])):cx.moveTo(xp(z),yp(q.v[i]))});cx.stroke();cx.setLineDash([]);q.p.forEach((z,i)=>{cx.fillStyle=q.c;cx.beginPath();cx.arc(xp(z),yp(q.v[i]),2.1,0,Math.PI*2);cx.fill()})});\n    cx.strokeStyle='#F2B33D';cx.setLineDash([4,2]);cx.beginPath();cx.moveTo(xp(x),T);cx.lineTo(xp(x),H-B);cx.stroke();cx.setLineDash([]);\n    cx.fillStyle=mode==='legacy'?'#FF8C84':'#F2D68A';cx.font='bold 10px Microsoft JhengHei';cx.fillText(mode==='legacy'?'紅線最大失配≈3.0m':'比較焦點 3.0–3.5m',xp(2.82),T+12);\n  }\n\n  function setMode(m){\n    mode=m;\n    ['hm2019','hm2026','hmLegacy'].forEach(id=>document.getElementById(id).classList.remove('hmOn'));\n    document.getElementById(m==='2019'?'hm2019':m==='2026'?'hm2026':'hmLegacy').classList.add('hmOn');\n    const h=document.getElementById('hmChartTitle'),e=document.getElementById('hmExplain'),lg=document.getElementById('hmLegend'),fh=document.getElementById('hmFocusHead'),fm=document.getElementById('hmFocusMain'),fs=document.getElementById('hmFocusSub');\n    if(m==='2019'){\n      h.textContent='① 2019：看 3.0 m 坡谷';e.innerHTML='看<b style=\"color:#F2B33D\">黃色區</b>：2019 的主要局部特徵在 3.0 m，Cβ(0,3 m) 約 <b style=\"color:#4D9BE8\">−34.5 µm</b>。';lg.textContent='藍線＝2019；黃直線＝目前滑座位置。';\n      fh.textContent='差異看這裡｜2019 基準';fm.textContent='3.0 m：Cβ ≈ −34.5 µm';fs.textContent='3D 只顯示藍色姿態線；黃色窄區就是 3.0 m。';tag.textContent='3D 看這裡：3.0 m｜藍線＝2019';band.position.x=-2;band.scale.x=.48;bandMat.color.setHex(0xF2B33D)\n    }else if(m==='2026'){\n      h.textContent='② 2026：2019 / 2026 疊圖';e.innerHTML='看<b style=\"color:#F2B33D\">3.0–3.5 m</b>：2026 相鄰差為 <b style=\"color:#37C79A\">−0.514 mm/m</b>；同時看藍、綠兩條 3D 姿態線分離。';lg.textContent='灰藍虛線＝2019；綠線＝2026；皆扣除各自全站平均，避免 1.0 / 2.7 mm/m 工作點遮蔽輪廓差異。';\n      fh.textContent='差異看這裡｜2026 vs 2019';fm.textContent='3.0→3.5 m：Δβ = −0.514 mm/m';fs.textContent='3D 上方短線：藍＝2019、綠＝2026；差得越開，局部姿態差越明顯。';tag.textContent='3D 看這裡：3.0–3.5 m｜藍＝2019　綠＝2026';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0x37C79A)\n    }else{\n      h.textContent='③ 沿用 2019 舊補償：看紅線';e.innerHTML='紅線＝<b style=\"color:#FF4A3D\">Cβ,2026−Cβ,2019</b>。在兩次位置座標正確登錄的比較前提下，3.0 m 示意失配約 <b style=\"color:#FF4A3D\">+47.7 µm</b>。';lg.textContent='藍＝2019 舊補償；綠＝2026 應補償；紅＝未更新補償的殘留。';\n      fh.textContent='差異看這裡｜不監測／不更新補償';fm.textContent='3.0 m：殘留失配 ≈ +47.7 µm';fs.textContent='看紅線與 3D 藍綠姿態線之間的紅色差異段；這就是準確度風險。';tag.textContent='3D 看兩條姿態線分離｜紅段＝差異';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0xFF4A3D)\n    }\n    drawChart(window.__platX||0);\n  }\n  document.getElementById('hm2019').onclick=()=>setMode('2019');\n  document.getElementById('hm2026').onclick=()=>setMode('2026');\n  document.getElementById('hmLegacy').onclick=()=>setMode('legacy');\n\n  function tick(){\n    const x=window.__platX||0,d=mode==='2019'?D19:D26,mu=mean(d.mean),b=lerp(x,d.pos,d.mean),dev=b-mu;\n    if(typeof stage!=='undefined'&&typeof S!=='undefined'&&S.p)stage.rotation.z=-Math.max(-.20,Math.min(.20,dev/.55*.20));\n    const a19=vis(lerp(x,D19.pos,D19.mean)-mean(D19.mean)),a26=vis(lerp(x,D26.pos,D26.mean)-mean(D26.mean));\n    const xb=x-5,y0=1.02,z0=.72;\n    l19.position.set(xb,y0,z0);l26.position.set(xb,y0,z0);l19.rotation.z=-a19;l26.rotation.z=-a26;\n    l19.visible=true;l26.visible=mode!=='2019';l19.material.opacity=mode==='2019'?.95:.55;l26.material.opacity=.95;\n    const ex=.72,p1=new THREE.Vector3(xb+ex*Math.cos(a19),y0-ex*Math.sin(a19),z0),p2=new THREE.Vector3(xb+ex*Math.cos(a26),y0-ex*Math.sin(a26),z0);\n    lDelta.geometry.setFromPoints([p1,p2]);lDelta.visible=mode==='legacy';\n    const cNow=corr(d,x),res=corr(D26,x)-corr(D19,x);\n    document.getElementById('hmC').textContent=fmt(cNow,1);document.getElementById('hmRes').textContent=mode==='legacy'?fmt(res,1):'—';\n    const rb=document.getElementById('rB'),re=document.getElementById('rE');if(rb)rb.textContent=fmt(b*1000,0);if(re)re.textContent=fmt(85*b,1);\n    drawChart(x);requestAnimationFrame(tick);\n  }\n  setMode('2026');tick();\n})();\n";d.body.appendChild(inj);
+ });
+})();
 </script>
 </body>
 </html>

@@ -19,7 +19,6 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
   frame.addEventListener('load',function(){
     document.getElementById('loading').style.display='none';
     const d=frame.contentDocument;
-
     const style=d.createElement('style');
     style.textContent=`
 #hmMode,#hmChartCard,#hmFocus,#hmRange{padding:10px 12px}
@@ -49,6 +48,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 #hmNowLab{font-size:10px;color:var(--tx3);letter-spacing:.10em}
 #hmNowVal{font-family:var(--mono);font-size:28px;font-weight:700;margin-top:2px}
 #hmNowUnit{font-size:11px;color:var(--tx3)}
+#hmScopeWrap{position:relative;width:100%;height:132px}
+#hmScopeWrap #scopeCv{position:absolute;inset:0;width:100%!important;height:132px!important}
+#hmScopeOv{position:absolute;inset:0;width:100%;height:132px;pointer-events:none;z-index:4}
+#hmWidthRead{font-family:var(--mono);font-size:11px;line-height:1.7;margin-top:7px;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:rgba(255,255,255,.025)}
+#hmWidthRead .w50{color:var(--pitch)} #hmWidthRead .w90{color:var(--roll)} #hmWidthRead .dw{color:var(--laser)}
+#hmWidthNote{font-size:9.7px;color:var(--tx3);line-height:1.45;margin-top:4px}
 `;
     d.head.appendChild(style);
 
@@ -71,50 +76,28 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 
   const colL=document.getElementById('colL'),colR=document.getElementById('colR');
   const mk=(id,html)=>{const e=document.createElement('div');e.className='hud';e.id=id;e.innerHTML=html;return e};
-
-  const modeCard=mk('hmMode',
-    '<div style="font-size:11px;color:var(--tx2);letter-spacing:.14em;margin-bottom:7px">三模式｜切換後看右側「測距影響」</div>'+ 
-    '<div class="mgrid">'+
-    '<button id="hm2019"><b>① 2019 基準</b><small>藍色：2019 相對原點阿貝效應</small></button>'+ 
-    '<button id="hm2026"><b>② 2026 健康監測</b><small>綠色：2026 相對原點阿貝效應</small></button>'+ 
-    '<button id="hmLegacy"><b>③ 2026 沿用 2019 舊補償</b><small>紅色：真正殘留的測距誤差</small></button>'+ 
-    '</div>');
-
-  const chartCard=mk('hmChartCard',
-    '<div id="hmChartTitle">② 2026：2019 / 2026 測距影響疊圖</div>'+ 
-    '<canvas id="hmChart" width="360" height="190"></canvas>'+ 
-    '<div id="hmExplain"></div><div id="hmLegend"></div>');
-
-  const focusCard=mk('hmFocus',
-    '<div id="hmFocusHead">差異看這裡</div><div id="hmFocusMain"></div><div id="hmFocusSub"></div>');
-
-  const rangeCard=mk('hmRange',
-    '<div id="hmRangeHead">測距影響｜三模式（同一位置 x）</div>'+ 
-    '<div class="hmRangeRow" id="hmRow19"><div class="hmRangeTop"><span>① 2019 阿貝效應</span><span><b id="hmR19">—</b> µm</span></div><div class="hmRangeSub">若依 2019 輪廓未補償，這就是位置相關測距效應；最大量值約 34.5 µm @ 3.0 m。</div></div>'+ 
-    '<div class="hmRangeRow" id="hmRow26"><div class="hmRangeTop"><span>② 2026 阿貝效應</span><span><b id="hmR26">—</b> µm</span></div><div class="hmRangeSub">依 2026 現況應施加的相對原點修正；最大量值約 30.5 µm @ 3.5 m。</div></div>'+ 
-    '<div class="hmRangeRow" id="hmRowRes"><div class="hmRangeTop"><span>③ 沿用 2019 後殘留誤差</span><span><b id="hmRRes">—</b> µm</span></div><div class="hmRangeSub">Cβ,2026 − Cβ,2019；在兩次位置正確登錄前提下，最大示意失配約 +47.7 µm @ 3.0 m。</div></div>'+ 
-    '<div id="hmNow"><div id="hmNowLab">目前模式的測距影響</div><div><span id="hmNowVal">—</span> <span id="hmNowUnit">µm</span></div></div>'+ 
-    '<div id="hmRangeNote">①②顯示的是「需要被補償的阿貝效應」，正確補償後不等於殘留誤差；③才是「2026 現況仍沿用 2019 舊補償」時留下的殘留測距誤差。</div>');
-
+  const modeCard=mk('hmMode','<div style="font-size:11px;color:var(--tx2);letter-spacing:.14em;margin-bottom:7px">三模式｜切換後看右側「測距影響」</div><div class="mgrid"><button id="hm2019"><b>① 2019 基準</b><small>藍色：2019 相對原點阿貝效應</small></button><button id="hm2026"><b>② 2026 健康監測</b><small>綠色：2026 相對原點阿貝效應</small></button><button id="hmLegacy"><b>③ 2026 沿用 2019 舊補償</b><small>紅色：真正殘留的測距誤差</small></button></div>');
+  const chartCard=mk('hmChartCard','<div id="hmChartTitle">② 2026：2019 / 2026 測距影響疊圖</div><canvas id="hmChart" width="360" height="190"></canvas><div id="hmExplain"></div><div id="hmLegend"></div>');
+  const focusCard=mk('hmFocus','<div id="hmFocusHead">差異看這裡</div><div id="hmFocusMain"></div><div id="hmFocusSub"></div>');
+  const rangeCard=mk('hmRange','<div id="hmRangeHead">測距影響｜三模式（同一位置 x）</div><div class="hmRangeRow" id="hmRow19"><div class="hmRangeTop"><span>① 2019 阿貝效應</span><span><b id="hmR19">—</b> µm</span></div><div class="hmRangeSub">若依 2019 輪廓未補償，這就是位置相關測距效應；最大量值約 34.5 µm @ 3.0 m。</div></div><div class="hmRangeRow" id="hmRow26"><div class="hmRangeTop"><span>② 2026 阿貝效應</span><span><b id="hmR26">—</b> µm</span></div><div class="hmRangeSub">依 2026 現況應施加的相對原點修正；最大量值約 30.5 µm @ 3.5 m。</div></div><div class="hmRangeRow" id="hmRowRes"><div class="hmRangeTop"><span>③ 沿用 2019 後殘留誤差</span><span><b id="hmRRes">—</b> µm</span></div><div class="hmRangeSub">Cβ,2026 − Cβ,2019；在兩次位置正確登錄前提下，最大示意失配約 +47.7 µm @ 3.0 m。</div></div><div id="hmNow"><div id="hmNowLab">目前模式的測距影響</div><div><span id="hmNowVal">—</span> <span id="hmNowUnit">µm</span></div></div><div id="hmRangeNote">①②顯示的是「需要被補償的阿貝效應」，正確補償後不等於殘留誤差；③才是「2026 現況仍沿用 2019 舊補償」時留下的殘留測距誤差。</div>');
   const titleCard=document.getElementById('title');
-  colL.insertBefore(modeCard,titleCard.nextSibling);
-  colL.insertBefore(chartCard,modeCard.nextSibling);
-  colL.insertBefore(focusCard,chartCard.nextSibling);
-  const panel=document.getElementById('panel');
-  colR.insertBefore(rangeCard,panel);
+  colL.insertBefore(modeCard,titleCard.nextSibling);colL.insertBefore(chartCard,modeCard.nextSibling);colL.insertBefore(focusCard,chartCard.nextSibling);
+  const panel=document.getElementById('panel');colR.insertBefore(rangeCard,panel);
 
-  const wrap=document.getElementById('wrap');
-  const tag=document.createElement('div');tag.id='hm3DTag';wrap.appendChild(tag);
-
-  const read=document.getElementById('read');
-  const extra=document.createElement('div');extra.id='hmRead';
-  extra.innerHTML='<span class="lab">Cβ,2019</span> <span class="c" id="hmC19">—</span> µm<br><span class="lab">Cβ,2026</span> <span class="c" id="hmC26">—</span> µm<br><span class="lab">舊補償殘差</span> <span class="res" id="hmRes">—</span> µm';
-  read.appendChild(extra);
-  const note=document.getElementById('note');
-  note.innerHTML='真正進入 0→x 長度結果的是 <b>Cβ(0,x)=85[β(x)−β(0)]</b>。右上「測距影響」卡固定同時顯示三種口徑。';
+  const wrap=document.getElementById('wrap');const tag=document.createElement('div');tag.id='hm3DTag';wrap.appendChild(tag);
+  const read=document.getElementById('read');const extra=document.createElement('div');extra.id='hmRead';extra.innerHTML='<span class="lab">Cβ,2019</span> <span class="c" id="hmC19">—</span> µm<br><span class="lab">Cβ,2026</span> <span class="c" id="hmC26">—</span> µm<br><span class="lab">舊補償殘差</span> <span class="res" id="hmRes">—</span> µm';read.appendChild(extra);
+  const note=document.getElementById('note');note.innerHTML='真正進入 0→x 長度結果的是 <b>Cβ(0,x)=85[β(x)−β(0)]</b>。右上「測距影響」卡固定同時顯示三種口徑。';
 
   const scope=document.getElementById('scopeCard');
-  if(scope)scope.querySelectorAll('div').forEach(e=>{if(e.textContent.includes('0812 實測積分'))e.textContent='離焦量為敏感度情境，非目前 D17 實測離焦輪廓；用來觀察 NA 與離焦對刻線判讀的影響。'});
+  if(scope){
+    scope.querySelectorAll('div').forEach(e=>{if(e.textContent.includes('0812 實測積分'))e.textContent='離焦量為敏感度情境，非目前 D17 實測離焦輪廓；50% / 90% 寬度用來量化模糊帶展寬。'});
+    const sc=document.getElementById('scopeCv');
+    const sw=document.createElement('div');sw.id='hmScopeWrap';sc.parentNode.insertBefore(sw,sc);sw.appendChild(sc);
+    const ov=document.createElement('canvas');ov.id='hmScopeOv';ov.width=sc.width;ov.height=sc.height;sw.appendChild(ov);
+    const wr=document.createElement('div');wr.id='hmWidthRead';wr.innerHTML='<span class="w50">W50</span> <b id="hmW50">—</b> µm　<span class="w90">W90</span> <b id="hmW90">—</b> µm<br><span class="dw">ΔW90(相對對焦)</span> <b id="hmDW90">—</b> µm';
+    const wn=document.createElement('div');wn.id='hmWidthNote';wn.textContent='W50＝50% 灰階強度門檻寬度；W90＝90% 灰階強度門檻表觀寬度。50% / 90% 為敏感度分析門檻，非宣稱 D17 現行軟體門檻。';
+    const prof=document.getElementById('profCv');prof.parentNode.insertBefore(wr,prof.nextSibling);wr.parentNode.insertBefore(wn,wr.nextSibling);
+  }
 
   const bandMat=new THREE.MeshBasicMaterial({color:0x37C79A,transparent:true,opacity:.19,depthWrite:false});
   const band=new THREE.Mesh(new THREE.BoxGeometry(.72,.020,1.75),bandMat);band.position.set(-1.75,GRA_TOP+.038,.10);world.add(band);
@@ -129,89 +112,69 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
     const W=cv.width,H=cv.height,L=48,R=10,T=10,B=27,xp=z=>L+(W-L-R)*z/10;
     cx.clearRect(0,0,W,H);cx.fillStyle='#0b1117';cx.fillRect(0,0,W,H);
     cx.fillStyle=mode==='legacy'?'rgba(255,74,61,.09)':'rgba(242,179,61,.08)';cx.fillRect(xp(2.75),T,xp(3.75)-xp(2.75),H-T-B);
-    const xs=D26.pos;
+    const xs=D26.pos,c19=xs.map(z=>corr(D19,z)),c26=xs.map(z=>corr(D26,z)),res=xs.map((z,i)=>c26[i]-c19[i]);
     let curves=[];
-    if(mode==='2019') curves=[{p:D19.pos,v:D19.pos.map(z=>corr(D19,z)),c:'#4D9BE8',dash:[]}];
-    else if(mode==='2026') curves=[{p:xs,v:xs.map(z=>corr(D19,z)),c:'#6f8dab',dash:[4,3]},{p:xs,v:xs.map(z=>corr(D26,z)),c:'#37C79A',dash:[]}];
-    else curves=[{p:xs,v:xs.map(z=>corr(D19,z)),c:'#4D9BE8',dash:[4,3]},{p:xs,v:xs.map(z=>corr(D26,z)),c:'#37C79A',dash:[]},{p:xs,v:xs.map(z=>corr(D26,z)-corr(D19,z)),c:'#FF4A3D',dash:[]}];
+    if(mode==='2019')curves=[{v:c19,c:'#4D9BE8',dash:[]}];
+    else if(mode==='2026')curves=[{v:c19,c:'#6f8dab',dash:[4,3]},{v:c26,c:'#37C79A',dash:[]}];
+    else curves=[{v:c19,c:'#4D9BE8',dash:[4,3]},{v:c26,c:'#37C79A',dash:[]},{v:res,c:'#FF4A3D',dash:[]}];
     let vals=curves.flatMap(q=>q.v),mn=Math.min(...vals),mx=Math.max(...vals),sp=Math.max(mx-mn,20);mn-=sp*.14;mx+=sp*.14;
     const yp=y=>T+(H-T-B)*(1-(y-mn)/(mx-mn));
     cx.strokeStyle='#2A3A4C';cx.lineWidth=1;cx.setLineDash([]);cx.beginPath();cx.moveTo(L,T);cx.lineTo(L,H-B);cx.lineTo(W-R,H-B);cx.stroke();
     cx.font='10px Consolas';cx.fillStyle='#708294';for(let z=0;z<=10;z+=2)cx.fillText(z+'m',xp(z)-7,H-8);
-    for(let k=0;k<5;k++){let v=mn+(mx-mn)*k/4,y=yp(v);cx.strokeStyle='rgba(90,110,128,.16)';cx.beginPath();cx.moveTo(L,y);cx.lineTo(W-R,y);cx.stroke();cx.fillStyle='#708294';cx.fillText(v.toFixed(0),3,y+3)}
-    if(mn<0&&mx>0){cx.strokeStyle='rgba(217,228,238,.25)';cx.setLineDash([2,3]);cx.beginPath();cx.moveTo(L,yp(0));cx.lineTo(W-R,yp(0));cx.stroke();cx.setLineDash([])}
-    curves.forEach((q,j)=>{cx.strokeStyle=q.c;cx.lineWidth=(mode==='legacy'&&j===2)?2.7:1.9;cx.setLineDash(q.dash);cx.beginPath();q.p.forEach((z,i)=>{i?cx.lineTo(xp(z),yp(q.v[i])):cx.moveTo(xp(z),yp(q.v[i]))});cx.stroke();cx.setLineDash([]);q.p.forEach((z,i)=>{cx.fillStyle=q.c;cx.beginPath();cx.arc(xp(z),yp(q.v[i]),2.1,0,Math.PI*2);cx.fill()})});
+    for(let k=0;k<5;k++){let v=mn+(mx-mn)*k/4,y=yp(v);cx.strokeStyle='rgba(90,110,128,.16)';cx.beginPath();cx.moveTo(L,y);cx.lineTo(W-R,y);cx.stroke();cx.fillStyle='#708294';cx.fillText(v.toFixed(0),4,y+3)}
+    if(mn<0&&mx>0){cx.strokeStyle='rgba(217,228,238,.22)';cx.setLineDash([2,3]);cx.beginPath();cx.moveTo(L,yp(0));cx.lineTo(W-R,yp(0));cx.stroke()}
+    curves.forEach((q,j)=>{cx.strokeStyle=q.c;cx.lineWidth=(mode==='legacy'&&j===2)?2.5:1.8;cx.setLineDash(q.dash);cx.beginPath();xs.forEach((z,i)=>{i?cx.lineTo(xp(z),yp(q.v[i])):cx.moveTo(xp(z),yp(q.v[i]))});cx.stroke();cx.setLineDash([])});
     cx.strokeStyle='#F2B33D';cx.setLineDash([4,2]);cx.beginPath();cx.moveTo(xp(x),T);cx.lineTo(xp(x),H-B);cx.stroke();cx.setLineDash([]);
-    cx.fillStyle=mode==='legacy'?'#FF8C84':'#F2D68A';cx.font='bold 10px Microsoft JhengHei';cx.fillText(mode==='legacy'?'紅線＝殘留測距誤差':'縱軸＝相對原點測距影響 (µm)',xp(2.60),T+12);
   }
 
   function setMode(m){
-    mode=m;
-    ['hm2019','hm2026','hmLegacy'].forEach(id=>document.getElementById(id).classList.remove('hmOn'));
+    mode=m;['hm2019','hm2026','hmLegacy'].forEach(id=>document.getElementById(id).classList.remove('hmOn'));
     document.getElementById(m==='2019'?'hm2019':m==='2026'?'hm2026':'hmLegacy').classList.add('hmOn');
-    document.getElementById('hmRow19').className='hmRangeRow'+(m==='2019'?' sel19':'');
-    document.getElementById('hmRow26').className='hmRangeRow'+(m==='2026'?' sel26':'');
-    document.getElementById('hmRowRes').className='hmRangeRow'+(m==='legacy'?' selRes':'');
-    const h=document.getElementById('hmChartTitle'),e=document.getElementById('hmExplain'),lg=document.getElementById('hmLegend'),fh=document.getElementById('hmFocusHead'),fm=document.getElementById('hmFocusMain'),fs=document.getElementById('hmFocusSub'),nv=document.getElementById('hmNowVal'),nl=document.getElementById('hmNowLab');
+    ['hmRow19','hmRow26','hmRowRes'].forEach(id=>document.getElementById(id).className='hmRangeRow');
+    document.getElementById(m==='2019'?'hmRow19':m==='2026'?'hmRow26':'hmRowRes').classList.add(m==='2019'?'sel19':m==='2026'?'sel26':'selRes');
+    const h=document.getElementById('hmChartTitle'),e=document.getElementById('hmExplain'),lg=document.getElementById('hmLegend'),fh=document.getElementById('hmFocusHead'),fm=document.getElementById('hmFocusMain'),fs=document.getElementById('hmFocusSub'),now=document.getElementById('hmNowLab');
     if(m==='2019'){
-      h.textContent='① 2019：相對原點測距影響 Cβ,2019';
-      e.innerHTML='藍線直接用 <b>Cβ(0,x)=85[β(x)−β(0)]</b> 換成 µm；3.0 m 約 <b style="color:#4D9BE8">−34.5 µm</b>。';
-      lg.textContent='藍線＝2019 阿貝效應；黃直線＝目前滑座位置。';
-      fh.textContent='本模式看哪裡？';fm.textContent='右上藍框「① 2019 阿貝效應」';fs.textContent='3D 黃色窄區對準 3.0 m；右上數值與左圖同步移動。';
-      tag.textContent='① 2019｜測距影響看右上藍框';band.position.x=-2;band.scale.x=.48;bandMat.color.setHex(0xF2B33D);nv.style.color='#4D9BE8';nl.textContent='目前模式：2019 阿貝效應';
+      h.textContent='① 2019：相對原點阿貝效應';e.innerHTML='看<b style="color:#F2B33D">3.0 m 黃色區</b>：Cβ(0,3 m) 約 <b style="color:#4D9BE8">−34.5 µm</b>。';lg.textContent='藍線＝2019 Cβ；黃直線＝目前滑座位置。';fh.textContent='差異看這裡｜2019 基準';fm.textContent='3.0 m：Cβ ≈ −34.5 µm';fs.textContent='3D 只顯示藍色姿態線；黃色窄區就是 3.0 m。';tag.textContent='3D 看這裡：3.0 m｜藍線＝2019';now.textContent='目前模式：2019 阿貝效應';band.position.x=-2;band.scale.x=.48;bandMat.color.setHex(0xF2B33D);
     }else if(m==='2026'){
-      h.textContent='② 2026：2019 / 2026 測距影響直接疊圖';
-      e.innerHTML='藍虛線＝2019，綠線＝2026，兩者都已換成 <b>µm</b>。2026 最大申報點量值約 <b style="color:#37C79A">30.5 µm @ 3.5 m</b>。';
-      lg.textContent='藍虛線＝Cβ,2019；綠線＝Cβ,2026；差距就是補償需求已改變。';
-      fh.textContent='本模式看哪裡？';fm.textContent='右上綠框「② 2026 阿貝效應」';fs.textContent='左圖直接比較兩年的「測距影響 µm」，不再只比較角度。';
-      tag.textContent='② 2026｜測距影響看右上綠框';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0x37C79A);nv.style.color='#37C79A';nl.textContent='目前模式：2026 阿貝效應';
+      h.textContent='② 2026：2019 / 2026 阿貝效應疊圖';e.innerHTML='看<b style="color:#F2B33D">3.0–3.5 m</b>：2026 最大量值移到 3.5 m，約 <b style="color:#37C79A">−30.5 µm</b>。';lg.textContent='灰藍虛線＝2019；綠線＝2026；黃直線＝目前位置。';fh.textContent='差異看這裡｜2026 vs 2019';fm.textContent='谷底取樣由 3.0 m 移到 3.5 m';fs.textContent='看圖上藍綠曲線與 3D 藍綠姿態線的分離。';tag.textContent='3D 看這裡：3.0–3.5 m｜藍＝2019　綠＝2026';now.textContent='目前模式：2026 應補償阿貝效應';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0x37C79A);
     }else{
-      h.textContent='③ 沿用 2019 舊補償：紅線＝殘留測距誤差';
-      e.innerHTML='紅線＝<b style="color:#FF4A3D">Cβ,2026−Cβ,2019</b>。在位置正確登錄前提下，3.0 m 示意失配約 <b style="color:#FF4A3D">+47.7 µm</b>。';
-      lg.textContent='藍＝舊補償；綠＝2026 應補償；紅＝沿用舊補償後真正留下的殘留測距誤差。';
-      fh.textContent='本模式看哪裡？';fm.textContent='右上紅框「③ 殘留誤差」';fs.textContent='這一列才是「不監測、不更新補償」直接造成的準確度風險。';
-      tag.textContent='③ 舊補償｜殘留測距誤差看右上紅框';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0xFF4A3D);nv.style.color='#FF4A3D';nl.textContent='目前模式：殘留測距誤差';
+      h.textContent='③ 沿用 2019 舊補償：紅線＝殘留';e.innerHTML='紅線＝<b style="color:#FF4A3D">Cβ,2026−Cβ,2019</b>；在位置正確登錄前提下，3.0 m 示意失配約 <b style="color:#FF4A3D">+47.7 µm</b>。';lg.textContent='藍＝2019 舊補償；綠＝2026 應補償；紅＝未更新補償殘留。';fh.textContent='差異看這裡｜不監測／不更新補償';fm.textContent='3.0 m：殘留失配 ≈ +47.7 µm';fs.textContent='紅線與 3D 紅色差異段就是準確度風險。';tag.textContent='3D 看藍綠姿態線分離｜紅段＝補償失配';now.textContent='目前模式：沿用舊補償後殘留測距誤差';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0xFF4A3D);
     }
     drawChart(window.__platX||0);
   }
+  document.getElementById('hm2019').onclick=()=>setMode('2019');document.getElementById('hm2026').onclick=()=>setMode('2026');document.getElementById('hmLegacy').onclick=()=>setMode('legacy');
 
-  document.getElementById('hm2019').onclick=()=>setMode('2019');
-  document.getElementById('hm2026').onclick=()=>setMode('2026');
-  document.getElementById('hmLegacy').onclick=()=>setMode('legacy');
-
-  function tick(){
-    const x=window.__platX||0;
-    const c19=corr(D19,x),c26=corr(D26,x),res=c26-c19;
-    document.getElementById('hmR19').textContent=fmt(c19,1);
-    document.getElementById('hmR26').textContent=fmt(c26,1);
-    document.getElementById('hmRRes').textContent=fmt(res,1);
-    document.getElementById('hmC19').textContent=fmt(c19,1);
-    document.getElementById('hmC26').textContent=fmt(c26,1);
-    document.getElementById('hmRes').textContent=fmt(res,1);
-    document.getElementById('hmNowVal').textContent=fmt(mode==='2019'?c19:mode==='2026'?c26:res,1);
-
-    const dat=mode==='2019'?D19:D26,mu=mean(dat.mean),b=lerp(x,dat.pos,dat.mean),dev=b-mu;
-    if(typeof stage!=='undefined'&&typeof S!=='undefined'&&S.p)stage.rotation.z=-Math.max(-.20,Math.min(.20,dev/.55*.20));
-    const a19=vis(lerp(x,D19.pos,D19.mean)-mean(D19.mean)),a26=vis(lerp(x,D26.pos,D26.mean)-mean(D26.mean));
-    const xb=x-5,y0=1.02,z0=.72;
-    l19.position.set(xb,y0,z0);l26.position.set(xb,y0,z0);l19.rotation.z=-a19;l26.rotation.z=-a26;
-    l19.visible=true;l26.visible=mode!=='2019';l19.material.opacity=mode==='2019'?.95:.55;l26.material.opacity=.95;
-    const ex=.72,p1=new THREE.Vector3(xb+ex*Math.cos(a19),y0-ex*Math.sin(a19),z0),p2=new THREE.Vector3(xb+ex*Math.cos(a26),y0-ex*Math.sin(a26),z0);
-    lDelta.geometry.setFromPoints([p1,p2]);lDelta.visible=mode==='legacy';
-
-    const rb=document.getElementById('rB'),re=document.getElementById('rE');
-    if(rb)rb.textContent=fmt(b*1000,0);
-    if(re)re.textContent=fmt(85*b,1);
-    drawChart(x);
-    requestAnimationFrame(tick);
+  function erf(x){var s=x<0?-1:1;x=Math.abs(x);var t=1/(1+.3275911*x);var y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-.284496736)*t+.254829592)*t*Math.exp(-x*x);return s*y}
+  function profile(u,sigma){var h=75;if(sigma<.05)return Math.abs(u)<h?0:1;var r=.5*(erf((u+h)/(Math.SQRT2*sigma))-erf((u-h)/(Math.SQRT2*sigma)));return 1-r}
+  function widthAt(th,B){var sig=B/2.355;if(profile(0,sig)>=th)return NaN;var lo=0,hi=440;for(var i=0;i<45;i++){var md=(lo+hi)/2;if(profile(md,sig)<th)lo=md;else hi=md}return 2*(lo+hi)/2}
+  function drawWidthOverlay(){
+    const ov=document.getElementById('hmScopeOv');if(!ov)return;const oc=ov.getContext('2d'),W=ov.width,H=ov.height;oc.clearRect(0,0,W,H);
+    const fb=parseFloat((document.getElementById('fB')||{}).textContent);const fd=parseFloat((document.getElementById('fD')||{}).textContent);if(!isFinite(fb)||!isFinite(fd))return;
+    const w50=widthAt(.5,fb),w90=widthAt(.9,fb);const na=Math.sqrt(.55/fd),b0=1.22*.55/na,w90_0=widthAt(.9,b0),dw=w90-w90_0;
+    const umpx=880/W,cx=W/2;
+    function vline(x,col,dash){oc.save();oc.strokeStyle=col;oc.lineWidth=1.4;oc.setLineDash(dash||[]);oc.beginPath();oc.moveTo(x,10);oc.lineTo(x,H-8);oc.stroke();oc.restore()}
+    if(isFinite(w90)){let dx=w90/2/umpx;oc.fillStyle='rgba(242,179,61,.07)';oc.fillRect(cx-dx,0,2*dx,H);vline(cx-dx,'#F2B33D',[4,3]);vline(cx+dx,'#F2B33D',[4,3]);oc.fillStyle='#F2B33D';oc.font='bold 10px Consolas';oc.fillText('90%',cx-dx+3,13);oc.fillText('90%',cx+dx-24,13)}
+    if(isFinite(w50)){let dx=w50/2/umpx;vline(cx-dx,'#4D9BE8',[]);vline(cx+dx,'#4D9BE8',[]);oc.fillStyle='#4D9BE8';oc.font='bold 10px Consolas';oc.fillText('50%',cx-dx+3,H-10);oc.fillText('50%',cx+dx-24,H-10)}
+    document.getElementById('hmW50').textContent=isFinite(w50)?w50.toFixed(1):'無法判定';document.getElementById('hmW90').textContent=isFinite(w90)?w90.toFixed(1):'無法判定';document.getElementById('hmDW90').textContent=isFinite(dw)?fmt(dw,1):'—';
   }
 
+  function tick(){
+    const x=window.__platX||0,d=mode==='2019'?D19:D26,mu=mean(d.mean),b=lerp(x,d.pos,d.mean),dev=b-mu;
+    if(typeof stage!=='undefined'&&typeof S!=='undefined'&&S.p)stage.rotation.z=-Math.max(-.20,Math.min(.20,dev/.55*.20));
+    const a19=vis(lerp(x,D19.pos,D19.mean)-mean(D19.mean)),a26=vis(lerp(x,D26.pos,D26.mean)-mean(D26.mean));
+    const xb=x-5,y0=1.02,z0=.72;l19.position.set(xb,y0,z0);l26.position.set(xb,y0,z0);l19.rotation.z=-a19;l26.rotation.z=-a26;l19.visible=true;l26.visible=mode!=='2019';l19.material.opacity=mode==='2019'?.95:.55;l26.material.opacity=.95;
+    const ex=.72,p1=new THREE.Vector3(xb+ex*Math.cos(a19),y0-ex*Math.sin(a19),z0),p2=new THREE.Vector3(xb+ex*Math.cos(a26),y0-ex*Math.sin(a26),z0);lDelta.geometry.setFromPoints([p1,p2]);lDelta.visible=mode==='legacy';
+    const c19=corr(D19,x),c26=corr(D26,x),res=c26-c19;
+    document.getElementById('hmC19').textContent=fmt(c19,1);document.getElementById('hmC26').textContent=fmt(c26,1);document.getElementById('hmRes').textContent=fmt(res,1);
+    document.getElementById('hmR19').textContent=fmt(c19,1);document.getElementById('hmR26').textContent=fmt(c26,1);document.getElementById('hmRRes').textContent=fmt(res,1);
+    const now=mode==='2019'?c19:mode==='2026'?c26:res;const nv=document.getElementById('hmNowVal');nv.textContent=fmt(now,1);nv.style.color=mode==='2019'?'#4D9BE8':mode==='2026'?'#37C79A':'#FF4A3D';
+    const rb=document.getElementById('rB'),re=document.getElementById('rE');if(rb)rb.textContent=fmt(b*1000,0);if(re)re.textContent=fmt(85*b,1);
+    drawChart(x);drawWidthOverlay();requestAnimationFrame(tick);
+  }
   setMode('2026');tick();
 })();
 `;
-    const inj=d.createElement('script');
-    inj.textContent=code;
-    d.body.appendChild(inj);
+    const inj=d.createElement('script');inj.textContent=code;d.body.appendChild(inj);
   });
 })();
 </script>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>D17 軌道健康監測｜三模式測距影響</title>
+<title>D17 / D18 軌道健康監測｜三模式測距影響</title>
 <style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 #scene{position:absolute;inset:0;width:100%;height:100%;border:0}
@@ -21,7 +21,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
     const d=frame.contentDocument;
     const style=d.createElement('style');
     style.textContent=`
-#hmMode,#hmChartCard,#hmFocus,#hmRange{padding:10px 12px}
+#hmMode,#hmChartCard,#hmFocus,#hmRange,#hmLive{padding:10px 12px}
 #hmMode .mgrid{display:grid;grid-template-columns:1fr;gap:6px}
 #hmMode button{display:block!important;text-align:left!important;padding:8px 10px!important}
 #hmMode button b{display:block;font-size:13px}
@@ -30,7 +30,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 #hmMode #hm2026.hmOn{border-color:var(--yaw);background:rgba(55,199,154,.10)}
 #hmMode #hmLegacy.hmOn{border-color:var(--laser);background:rgba(255,74,61,.10)}
 #hmChart{display:block;width:100%;height:190px;border:1px solid rgba(120,145,165,.18);border-radius:6px;background:#0b1117}
-#hmChartTitle,#hmFocusHead,#hmRangeHead{font-size:10.8px;color:var(--tx2);letter-spacing:.14em;margin-bottom:6px}
+#hmChartTitle,#hmFocusHead,#hmRangeHead,#hmLiveHead{font-size:10.8px;color:var(--tx2);letter-spacing:.14em;margin-bottom:6px}
 #hmExplain,#hmLegend,#hmFocusSub,#hmRangeNote{font-size:10.7px;color:var(--tx2);line-height:1.55;margin-top:5px}
 #hmFocusMain{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--roll);line-height:1.25}
 #hm3DTag{position:absolute;z-index:45;left:50%;top:14px;transform:translateX(-50%);padding:7px 12px;border:1px solid var(--roll);border-radius:8px;background:rgba(11,16,21,.92);color:#FFE3AD;font-size:12px;pointer-events:none;white-space:nowrap}
@@ -54,6 +54,19 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 #hmWidthRead{font-family:var(--mono);font-size:11px;line-height:1.7;margin-top:7px;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:rgba(255,255,255,.025)}
 #hmWidthRead .w50{color:var(--pitch)} #hmWidthRead .w90{color:var(--roll)} #hmWidthRead .dw{color:var(--laser)}
 #hmWidthNote{font-size:9.7px;color:var(--tx3);line-height:1.45;margin-top:4px}
+#hmLive{border-color:rgba(100,160,205,.48)}
+#hmLiveHead{color:#C9E8FF;font-weight:700;margin-bottom:8px}
+.hmLiveSec{border:1px solid var(--line);border-radius:7px;padding:7px 8px;margin-top:6px;background:rgba(255,255,255,.018)}
+.hmLiveSecTitle{font-size:10px;color:var(--tx3);letter-spacing:.08em;margin-bottom:4px}
+.hmLiveGrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+.hmLiveItem{display:flex;justify-content:space-between;gap:7px;align-items:baseline;font-size:10.6px;color:var(--tx2);white-space:nowrap}
+.hmLiveItem b{font-family:var(--mono);font-size:13px;color:var(--tx);font-weight:700}
+.hmLiveWide{display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-size:10.6px;color:var(--tx2);margin-top:3px}
+.hmLiveWide b{font-family:var(--mono);font-size:13px;color:var(--tx);font-weight:700}
+#hmX17{color:#8FC6FF} #hmX18{color:#67DDB4} #hmDirect{color:#E4EDF5} #hmIdeal{color:#9AAFC0}
+#hmDirectResid{color:var(--laser);font-size:16px} #hmDeltaD{color:#B89BE8;font-size:16px}
+#hmA17{color:#FF8178} #hmA18{color:#67DDB4} #hmXPos{color:var(--roll)}
+#hmLiveNote{font-size:9.6px;color:var(--tx3);line-height:1.45;margin-top:6px}
 `;
     d.head.appendChild(style);
 
@@ -70,8 +83,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
   const oldData=document.getElementById('dataCard'); if(oldData)oldData.style.display='none';
   const oldRange=document.getElementById('rangeCard'); if(oldRange)oldRange.style.display='none';
   const oldCap=document.getElementById('cap'); if(oldCap)oldCap.style.display='none';
-  const title=document.querySelector('#title h1'); if(title)title.textContent='D17 軌道健康監測｜原版 3D 保留';
-  const sub=document.querySelector('#title .sub'); if(sub)sub.textContent='三模式同一位置比較：2019 阿貝效應、2026 阿貝效應、沿用舊補償後殘留測距誤差。';
+  const title=document.querySelector('#title h1'); if(title)title.textContent='D17 / D18 軌道健康監測｜原版 3D 保留';
+  const sub=document.querySelector('#title .sub'); if(sub)sub.textContent='三模式同一位置比較；右側同步顯示 D17/D18 即時讀值、直接差值與 Eq.(5) 姿態差動殘差。';
   const bData=document.getElementById('bDATA'); if(bData){bData.disabled=true;bData.innerHTML='<span>資料由三模式控制</span><span class="dot"></span>'}
 
   const colL=document.getElementById('colL'),colR=document.getElementById('colR');
@@ -79,14 +92,15 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
   const modeCard=mk('hmMode','<div style="font-size:11px;color:var(--tx2);letter-spacing:.14em;margin-bottom:7px">三模式｜切換後看右側「測距影響」</div><div class="mgrid"><button id="hm2019"><b>① 2019 基準</b><small>藍色：2019 相對原點阿貝效應</small></button><button id="hm2026"><b>② 2026 健康監測</b><small>綠色：2026 相對原點阿貝效應</small></button><button id="hmLegacy"><b>③ 2026 沿用 2019 舊補償</b><small>紅色：真正殘留的測距誤差</small></button></div>');
   const chartCard=mk('hmChartCard','<div id="hmChartTitle">② 2026：2019 / 2026 測距影響疊圖</div><canvas id="hmChart" width="360" height="190"></canvas><div id="hmExplain"></div><div id="hmLegend"></div>');
   const focusCard=mk('hmFocus','<div id="hmFocusHead">差異看這裡</div><div id="hmFocusMain"></div><div id="hmFocusSub"></div>');
+  const liveCard=mk('hmLive','<div id="hmLiveHead">D17 / D18 即時測距與差值</div><div class="hmLiveSec"><div class="hmLiveSecTitle">① 原始即時讀值</div><div class="hmLiveGrid"><div class="hmLiveItem"><span>D17</span><span><b id="hmX17">—</b> m</span></div><div class="hmLiveItem"><span>D18</span><span><b id="hmX18">—</b> m</span></div></div><div class="hmLiveWide"><span>目前滑座 x</span><span><b id="hmXPos">—</b> m</span></div></div><div class="hmLiveSec"><div class="hmLiveSecTitle">② 直接差值</div><div class="hmLiveWide"><span>D18 − D17</span><span><b id="hmDirect">—</b> m</span></div><div class="hmLiveWide"><span>理想幾何 L − 2x</span><span><b id="hmIdeal">—</b> m</span></div><div class="hmLiveWide"><span>直接差值殘差</span><span><b id="hmDirectResid">—</b> µm</span></div></div><div class="hmLiveSec"><div class="hmLiveSecTitle">③ Eq.(5) 姿態差動殘差</div><div class="hmLiveGrid"><div class="hmLiveItem"><span>δ₁₇</span><span><b id="hmA17">—</b> µm</span></div><div class="hmLiveItem"><span>δ₁₈</span><span><b id="hmA18">—</b> µm</span></div></div><div class="hmLiveWide"><span>Δδ=(D17−D18)−(2x−L)</span><span><b id="hmDeltaD">—</b> µm</span></div></div><div id="hmLiveNote">D17 由左端量測、D18 由右端對頂量測，因此直接差值採 D18−D17 時，其殘差與 Eq.(5) 的 Δδ 符號相反；兩者是同一姿態效應的不同符號約定。</div>');
   const rangeCard=mk('hmRange','<div id="hmRangeHead">測距影響｜三模式（同一位置 x）</div><div class="hmRangeRow" id="hmRow19"><div class="hmRangeTop"><span>① 2019 阿貝效應</span><span><b id="hmR19">—</b> µm</span></div><div class="hmRangeSub">若依 2019 輪廓未補償，這就是位置相關測距效應；最大量值約 34.5 µm @ 3.0 m。</div></div><div class="hmRangeRow" id="hmRow26"><div class="hmRangeTop"><span>② 2026 阿貝效應</span><span><b id="hmR26">—</b> µm</span></div><div class="hmRangeSub">依 2026 現況應施加的相對原點修正；最大量值約 30.5 µm @ 3.5 m。</div></div><div class="hmRangeRow" id="hmRowRes"><div class="hmRangeTop"><span>③ 沿用 2019 後殘留誤差</span><span><b id="hmRRes">—</b> µm</span></div><div class="hmRangeSub">Cβ,2026 − Cβ,2019；在兩次位置正確登錄前提下，最大示意失配約 +47.7 µm @ 3.0 m。</div></div><div id="hmNow"><div id="hmNowLab">目前模式的測距影響</div><div><span id="hmNowVal">—</span> <span id="hmNowUnit">µm</span></div></div><div id="hmRangeNote">①②顯示的是「需要被補償的阿貝效應」，正確補償後不等於殘留誤差；③才是「2026 現況仍沿用 2019 舊補償」時留下的殘留測距誤差。</div>');
   const titleCard=document.getElementById('title');
   colL.insertBefore(modeCard,titleCard.nextSibling);colL.insertBefore(chartCard,modeCard.nextSibling);colL.insertBefore(focusCard,chartCard.nextSibling);
-  const panel=document.getElementById('panel');colR.insertBefore(rangeCard,panel);
+  const panel=document.getElementById('panel');colR.insertBefore(rangeCard,panel);colR.insertBefore(liveCard,rangeCard);
 
   const wrap=document.getElementById('wrap');const tag=document.createElement('div');tag.id='hm3DTag';wrap.appendChild(tag);
   const read=document.getElementById('read');const extra=document.createElement('div');extra.id='hmRead';extra.innerHTML='<span class="lab">Cβ,2019</span> <span class="c" id="hmC19">—</span> µm<br><span class="lab">Cβ,2026</span> <span class="c" id="hmC26">—</span> µm<br><span class="lab">舊補償殘差</span> <span class="res" id="hmRes">—</span> µm';read.appendChild(extra);
-  const note=document.getElementById('note');note.innerHTML='真正進入 0→x 長度結果的是 <b>Cβ(0,x)=85[β(x)−β(0)]</b>。右上「測距影響」卡固定同時顯示三種口徑。';
+  const note=document.getElementById('note');note.innerHTML='真正進入 0→x 長度結果的是 <b>Cβ(0,x)=85[β(x)−β(0)]</b>。右側上方新增 D17/D18 原始即時讀值與直接差值；下方「測距影響」卡固定同時顯示三種口徑。';
 
   const scope=document.getElementById('scopeCard');
   if(scope){
@@ -158,6 +172,26 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
     document.getElementById('hmW50').textContent=isFinite(w50)?w50.toFixed(1):'無法判定';document.getElementById('hmW90').textContent=isFinite(w90)?w90.toFixed(1):'無法判定';document.getElementById('hmDW90').textContent=isFinite(dw)?fmt(dw,1):'—';
   }
 
+  function updateLiveReadout(x){
+    if(typeof rangeReadings!=='function')return;
+    const q=rangeReadings(x);
+    const rail=(typeof RAIL_L!=='undefined')?RAIL_L:10.0;
+    const direct=q.X18-q.X17;
+    const ideal=rail-2*x;
+    const directResid=q.abbe18_um-q.abbe17_um;
+    const delta=q.abbe17_um-q.abbe18_um;
+    const put=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val};
+    put('hmX17',q.X17.toFixed(6));
+    put('hmX18',q.X18.toFixed(6));
+    put('hmXPos',x.toFixed(3));
+    put('hmDirect',direct.toFixed(6));
+    put('hmIdeal',ideal.toFixed(6));
+    put('hmDirectResid',fmt(directResid,1));
+    put('hmA17',fmt(q.abbe17_um,1));
+    put('hmA18',fmt(q.abbe18_um,1));
+    put('hmDeltaD',fmt(delta,1));
+  }
+
   function tick(){
     const x=window.__platX||0,d=mode==='2019'?D19:D26,mu=mean(d.mean),b=lerp(x,d.pos,d.mean),dev=b-mu;
     if(typeof stage!=='undefined'&&typeof S!=='undefined'&&S.p)stage.rotation.z=-Math.max(-.20,Math.min(.20,dev/.55*.20));
@@ -169,7 +203,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
     document.getElementById('hmR19').textContent=fmt(c19,1);document.getElementById('hmR26').textContent=fmt(c26,1);document.getElementById('hmRRes').textContent=fmt(res,1);
     const now=mode==='2019'?c19:mode==='2026'?c26:res;const nv=document.getElementById('hmNowVal');nv.textContent=fmt(now,1);nv.style.color=mode==='2019'?'#4D9BE8':mode==='2026'?'#37C79A':'#FF4A3D';
     const rb=document.getElementById('rB'),re=document.getElementById('rE');if(rb)rb.textContent=fmt(b*1000,0);if(re)re.textContent=fmt(85*b,1);
-    drawChart(x);drawWidthOverlay();requestAnimationFrame(tick);
+    updateLiveReadout(x);drawChart(x);drawWidthOverlay();requestAnimationFrame(tick);
   }
   setMode('2026');tick();
 })();

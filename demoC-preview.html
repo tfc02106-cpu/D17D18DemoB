@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>D17 / D18 Demo C｜修正版刻線離焦模型</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
+#base{position:absolute;inset:0;width:100%;height:100%;border:0}
+#status{position:absolute;z-index:1000;left:50%;top:8px;transform:translateX(-50%);padding:7px 12px;border:1px solid #37C79A;border-radius:8px;background:rgba(11,16,21,.94);color:#BDF4DF;font:12px "Microsoft JhengHei",sans-serif;pointer-events:none;white-space:nowrap}
+#loading{position:absolute;z-index:1200;left:50%;top:50%;transform:translate(-50%,-50%);color:#D9E4EE;font:14px "Microsoft JhengHei",sans-serif}
+</style>
+</head>
+<body>
+<div id="loading">載入 D17D18DemoB 並套用修正版刻線離焦模型…</div>
+<iframe id="base" src="https://tfc02106-cpu.github.io/D17D18DemoB/" title="D17 / D18 Demo B base"></iframe>
+<div id="status">Demo C｜離焦模型修正：Pitch→高度端點法＋rₓ≈100 mm</div>
+<script>
+(function(){
+  'use strict';
+  const FOCUS_C=[[0.00,0.0,0.0,0.0],[0.25,6.8,-16.3,23.1],[0.50,19.7,-28.3,48.0],[0.75,36.3,-34.7,71.0],[1.00,35.6,-31.7,67.3],[1.25,20.5,-27.0,47.5],[1.50,16.8,-26.7,43.5],[1.75,22.3,-26.2,48.5],[2.00,16.9,-20.8,37.7],[2.25,2.6,-14.8,17.3],[2.50,-3.2,-10.9,7.7],[2.75,0.8,-3.0,3.8],[3.00,26.3,3.1,23.3],[3.25,64.9,4.5,60.4],[3.50,39.1,7.3,31.8],[3.75,-42.7,15.1,-57.7],[4.00,-107.0,23.4,-130.3],[4.25,-151.2,26.5,-177.7],[4.50,-151.9,27.8,-179.6],[4.75,-114.6,30.8,-145.4],[5.00,-88.3,15.1,-103.5],[5.25,-71.3,-14.8,-56.4],[5.50,-48.6,-40.5,-8.1],[5.75,-22.9,-66.9,44.1],[6.00,-19.1,-68.5,49.4],[6.25,-33.6,-47.0,13.3],[6.50,-34.9,-26.7,-8.2],[6.75,-25.8,-3.7,-22.2],[7.00,-31.7,22.3,-54.0],[7.25,-49.3,26.7,-76.0],[7.50,-48.2,8.7,-56.9],[7.75,-31.0,-7.4,-23.6],[8.00,-22.5,-22.4,-0.0],[8.25,-21.3,-38.8,17.6],[8.50,-16.2,-55.7,39.5],[8.75,-8.3,-70.0,61.7],[9.00,-6.4,-55.5,49.1],[9.25,-9.6,-32.3,22.7],[9.50,-10.0,-25.0,15.0],[9.75,-7.7,-13.3,5.6],[10.00,-1.4,0.0,-1.4]];
+  const frame=document.getElementById('base');
+  let installed=false;
+
+  function install(){
+    if(installed)return true;
+    let bd,sceneFrame,sd,w;
+    try{
+      bd=frame.contentDocument;
+      if(!bd)return false;
+      sceneFrame=bd.getElementById('scene');
+      if(!sceneFrame||!sceneFrame.contentDocument)return false;
+      sd=sceneFrame.contentDocument; w=sceneFrame.contentWindow;
+    }catch(e){return false;}
+    const cv=sd.getElementById('scopeCv'),pc=sd.getElementById('profCv');
+    if(!cv||!pc||!sd.getElementById('fB')||!w)return false;
+    installed=true;
+    document.getElementById('loading').style.display='none';
+    document.title='D17 / D18 Demo C｜修正版刻線離焦模型';
+
+    const h1=sd.querySelector('#title h1');
+    if(h1)h1.textContent='D17 / D18 軌道健康監測｜Demo C 修正版離焦';
+    const sub=sd.querySelector('#title .sub');
+    if(sub)sub.textContent='保留 Demo B 全部功能；刻線影像改用 0812 Pitch 重算之等效垂直軌跡，並納入顯微鏡 rₓ≈100 mm 的 Pitch 旋轉位移。';
+    const scopeHead=sd.querySelector('#scopeHd > div > div:nth-child(2)');
+    if(scopeHead)scopeHead.textContent='M Plan Apo 10× / NA 0.28｜rₓ ≈ 100 mm｜視野 880 µm';
+    const scope=sd.getElementById('scopeCard');
+    if(scope){
+      const ds=[...scope.querySelectorAll('div')];
+      const note=ds.find(e=>e.textContent.includes('離焦量')||e.textContent.includes('敏感度情境'));
+      if(note)note.innerHTML='離焦量 = <b>顯微鏡物鏡等效垂直軌跡 − 尺面等效垂直軌跡</b>。Pitch 先積分成高度，再以高度端點連線歸零；物鏡軌跡另加入 <b>rₓ ≈ 100 mm</b> 的 Pitch 旋轉位移。0 m 為預設對焦基準。最大 |離焦| 約 <b>180 µm @ 4.5 m</b>。此為幾何推估，不是 Z 向位移計直接實測。';
+    }
+
+    const ctx=cv.getContext('2d'),pcx=pc.getContext('2d');
+    const W=cv.width,H=cv.height,PW=pc.width,PH=pc.height;
+    const LAM=0.55,FOV=880,LINEW=150,UM_PX=FOV/W;
+    let NA=0.28,focusRef=0;
+    function dof(){return LAM/(NA*NA)}
+    function interp(m,col){
+      m=Math.max(0,Math.min(10,m));
+      let i=Math.min(FOCUS_C.length-2,Math.floor(m/0.25));
+      let a=FOCUS_C[i],b=FOCUS_C[i+1],q=(m-a[0])/(b[0]-a[0]);
+      return a[col]+(b[col]-a[col])*q;
+    }
+    function erf(x){let s=x<0?-1:1;x=Math.abs(x);let t=1/(1+.3275911*x);let y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-.284496736)*t+.254829592)*t*Math.exp(-x*x);return s*y}
+    function profile(u,sigma){let h=LINEW/2;if(sigma<.05)return Math.abs(u)<h?0:1;let r=.5*(erf((u+h)/(Math.SQRT2*sigma))-erf((u-h)/(Math.SQRT2*sigma)));return 1-r}
+    function draw(m){
+      let dz=interp(m,3)-focusRef;
+      let Bgeo=2*NA*Math.abs(dz),Bdif=1.22*LAM/NA,B=Math.sqrt(Bgeo*Bgeo+Bdif*Bdif),sigma=B/2.355;
+      let img=ctx.createImageData(W,H);
+      for(let xx=0;xx<W;xx++){
+        let u=(xx-W/2)*UM_PX,v=profile(u,sigma),g=Math.round(28+v*178);
+        for(let yy=0;yy<H;yy++){
+          let vig=1-.20*Math.pow((yy-H/2)/(H/2),2),p=(yy*W+xx)*4,c=Math.round(g*vig);
+          img.data[p]=c;img.data[p+1]=c+4;img.data[p+2]=c+9;img.data[p+3]=255;
+        }
+      }
+      ctx.putImageData(img,0,0);
+      ctx.strokeStyle='rgba(255,74,61,.85)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(W/2+.5,0);ctx.lineTo(W/2+.5,H);ctx.moveTo(0,H/2+.5);ctx.lineTo(W,H/2+.5);ctx.stroke();
+      let sp=100/UM_PX;ctx.strokeStyle='rgba(217,228,238,.75)';ctx.beginPath();ctx.moveTo(10,H-10);ctx.lineTo(10+sp,H-10);ctx.stroke();ctx.fillStyle='rgba(217,228,238,.75)';ctx.font='9px monospace';ctx.fillText('100 µm',10,H-14);
+
+      pcx.clearRect(0,0,PW,PH);pcx.fillStyle='#0d1216';pcx.fillRect(0,0,PW,PH);pcx.strokeStyle='rgba(90,110,128,.5)';pcx.lineWidth=1;pcx.beginPath();pcx.moveTo(0,PH-6);pcx.lineTo(PW,PH-6);pcx.stroke();
+      pcx.strokeStyle='#4D9BE8';pcx.lineWidth=1.6;pcx.beginPath();
+      for(let i=0;i<=PW;i++){let u=(i-PW/2)*UM_PX,v=profile(u,sigma),y=PH-6-v*(PH-14);i?pcx.lineTo(i,y):pcx.moveTo(i,y)}pcx.stroke();
+      let yThr=PH-6-.5*(PH-14);pcx.strokeStyle='rgba(242,179,61,.7)';pcx.setLineDash([3,3]);pcx.beginPath();pcx.moveTo(0,yThr);pcx.lineTo(PW,yThr);pcx.stroke();pcx.setLineDash([]);
+      let edge=null;for(let i=0;i<PW;i++){if(profile((i-PW/2)*UM_PX,sigma)<.5){edge=i;break}}
+      let edgeShift=NaN;if(edge!==null){pcx.strokeStyle='#FF4A3D';pcx.lineWidth=1.4;pcx.beginPath();pcx.moveTo(edge,2);pcx.lineTo(edge,PH-6);pcx.stroke();edgeShift=((edge-PW/2)*UM_PX)+LINEW/2}
+
+      const fx=sd.getElementById('fX'),fz=sd.getElementById('fZ'),fb=sd.getElementById('fB'),fd=sd.getElementById('fD'),fr=sd.getElementById('fR'),fe=sd.getElementById('fE');
+      if(fx)fx.textContent=m.toFixed(2);
+      if(fz){fz.textContent=(dz>=0?'+':'')+dz.toFixed(0);fz.style.color=Math.abs(dz)>dof()?'#FF4A3D':'#37C79A'}
+      if(fb)fb.textContent=B.toFixed(1);if(fd)fd.textContent=dof().toFixed(1);if(fr)fr.textContent=(Math.abs(dz)/dof()).toFixed(1);
+      if(fe){fe.textContent=isNaN(edgeShift)?'線已消失':edgeShift.toFixed(1);fe.style.color=isNaN(edgeShift)?'#FF4A3D':(Math.abs(edgeShift)>5?'#F2B33D':'#37C79A')}
+    }
+    w.__scopeDraw=draw;
+    const ff=sd.getElementById('fFocus');if(ff)ff.onclick=function(){focusRef=interp(w.__platX||0,3);draw(w.__platX||0)};
+    const fn=sd.getElementById('fNA');if(fn)fn.onclick=function(){NA=(NA===0.28)?0.05:0.28;this.textContent='NA '+NA.toFixed(2)+' → 切換';draw(w.__platX||0)};
+    draw(w.__platX||0);
+    return true;
+  }
+
+  frame.addEventListener('load',function(){
+    let n=0;const timer=setInterval(function(){n++;if(install()||n>60)clearInterval(timer)},250);
+  });
+})();
+</script>
+</body>
+</html>

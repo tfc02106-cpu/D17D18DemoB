@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>D17 / D18 軌道健康監測｜三模式測距影響</title>
+<title>D17 / D18 軌道健康監測｜年度比較與資料核對</title>
 <style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 #scene{position:absolute;inset:0;width:100%;height:100%;border:0}
@@ -67,40 +67,48 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 #hmDirectResid{color:var(--laser);font-size:16px} #hmDeltaD{color:#B89BE8;font-size:16px}
 #hmA17{color:#FF8178} #hmA18{color:#67DDB4} #hmXPos{color:var(--roll)}
 #hmLiveNote{font-size:9.6px;color:var(--tx3);line-height:1.45;margin-top:6px}
+#hmDataNotice{padding:10px 12px;border-color:var(--roll);font-size:11px;line-height:1.6;color:var(--tx2)}
+#hmDataNotice b{color:var(--roll)}
+#hmDataNotice small{display:block;color:var(--tx3);margin-top:4px}
 `;
     d.head.appendChild(style);
 
     const code=String.raw`
 (function(){
-  const D19={pos:[0,1,2,3,4,5,6,7,8,9,10],mean:[0.997,1.003,1.011,0.591,1.023,0.993,0.957,1.012,1.013,0.980,0.994],sd:[0.0029,0.0010,0.0010,0.0586,0.0051,0.0035,0.0053,0.0051,0.0050,0.0045,0.0076]};
-  const D26={pos:[0,.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10],mean:[2.7623333333,2.811,2.6723333333,2.764,2.6766666667,2.745,2.9173333333,2.4033333333,2.5433333333,2.891,2.8033333333,2.849,2.674,2.78,2.6596666667,2.8096666667,2.7406666667,2.7716666667,2.7236666667,2.7453333333,2.7766666667],sd:[0.00378594,0.01385641,0.01069268,0.00692820,0.01792577,0.00519615,0.03066486,0.01962991,0.00472582,0.00953939,0.01331666,0.00435890,0.02165641,0.00264575,0.00152753,0.01011599,0.00665833,0.01274101,0.00577350,0.00896289,0.00923760]};
+  const D19={"pos":[0.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],"mean":[0.9967,1.003,1.011,0.5913,1.0227,0.993,0.957,1.0117,1.0127,0.9797]};
+  const D26={"pos":[0.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0],"mean":[2.811,2.764,2.745,2.4033,2.891,2.849,2.78,2.8097,2.7717,2.7453]};
   const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
   const lerp=(x,xs,ys)=>{if(x<=xs[0])return ys[0];if(x>=xs[xs.length-1])return ys[ys.length-1];for(let i=1;i<xs.length;i++)if(x<=xs[i]){let q=(x-xs[i-1])/(xs[i]-xs[i-1]);return ys[i-1]*(1-q)+ys[i]*q}return ys[ys.length-1]};
   const corr=(dat,x)=>85*(lerp(x,dat.pos,dat.mean)-dat.mean[0]);
   const fmt=(v,n=1)=>(v>=0?'+':'')+v.toFixed(n);
+  const COMMON_MAX=D19.pos[D19.pos.length-1];
+  const annualDiff=D19.pos.map(x=>corr(D26,x)-corr(D19,x));
+  const peakIndex=annualDiff.reduce((best,v,i)=>Math.abs(v)>Math.abs(annualDiff[best])?i:best,0);
+  const peakDiff=annualDiff[peakIndex],peakX=D19.pos[peakIndex];
   let mode='2026';
 
   const oldData=document.getElementById('dataCard'); if(oldData)oldData.style.display='none';
   const oldRange=document.getElementById('rangeCard'); if(oldRange)oldRange.style.display='none';
   const oldCap=document.getElementById('cap'); if(oldCap)oldCap.style.display='none';
   const title=document.querySelector('#title h1'); if(title)title.textContent='D17 / D18 軌道健康監測｜原版 3D 保留';
-  const sub=document.querySelector('#title .sub'); if(sub)sub.textContent='三模式同一位置比較；右側同步顯示 D17/D18 即時讀值、直接差值與 Eq.(5) 姿態差動殘差。';
+  const sub=document.querySelector('#title .sub'); if(sub)sub.textContent='年度比較採論文第 8 版表 9 的共同測站；在 2019／2026 偏擺角不變的假設下，比較俯仰角修正。';
   const bData=document.getElementById('bDATA'); if(bData){bData.disabled=true;bData.innerHTML='<span>資料由三模式控制</span><span class="dot"></span>'}
 
   const colL=document.getElementById('colL'),colR=document.getElementById('colR');
   const mk=(id,html)=>{const e=document.createElement('div');e.className='hud';e.id=id;e.innerHTML=html;return e};
-  const modeCard=mk('hmMode','<div style="font-size:11px;color:var(--tx2);letter-spacing:.14em;margin-bottom:7px">三模式｜切換後看右側「測距影響」</div><div class="mgrid"><button id="hm2019"><b>① 2019 基準</b><small>藍色：2019 相對原點阿貝效應</small></button><button id="hm2026"><b>② 2026 健康監測</b><small>綠色：2026 相對原點阿貝效應</small></button><button id="hmLegacy"><b>③ 2026 沿用 2019 舊補償</b><small>紅色：真正殘留的測距誤差</small></button></div>');
+  const dataNotice=mk('hmDataNotice','<b>年度比較已依論文第 8 版表 9 更新</b><br>採表 9 列出的十個共同測站 x＝0–9 m，分別以首站為角度基準。分析假設 γ2019(x)＝γ2026(x)，因此只比較俯仰角修正差值；2019 年未量測偏擺角，此為分析前提。<small>2026-11-12 更新：取代舊版未對齊資料所得的年度差值。線段為測站間插值；超過共同測站範圍時不提供數值。此修正差值尚未合成不確定度，亦非實際殘留誤差的驗證。</small>');
+  const modeCard=mk('hmMode','<div style="font-size:11px;color:var(--tx2);letter-spacing:.14em;margin-bottom:7px">三模式｜表 9 共同測站</div><div class="mgrid"><button id="hm2019"><b>① 2019 共同測站</b><small>藍色：2019 電子水平儀的俯仰角修正</small></button><button id="hm2026"><b>② 2026 共同測站</b><small>綠色：2026 電子水平儀的俯仰角修正</small></button><button id="hmLegacy"><b>③ 俯仰角修正差值</b><small>紅色：共同測站的 ΔCβ；假設偏擺角不變</small></button></div>');
   const chartCard=mk('hmChartCard','<div id="hmChartTitle">② 2026：2019 / 2026 測距影響疊圖</div><canvas id="hmChart" width="360" height="190"></canvas><div id="hmExplain"></div><div id="hmLegend"></div>');
   const focusCard=mk('hmFocus','<div id="hmFocusHead">差異看這裡</div><div id="hmFocusMain"></div><div id="hmFocusSub"></div>');
-  const liveCard=mk('hmLive','<div id="hmLiveHead">D17 / D18 即時測距與差值</div><div class="hmLiveSec"><div class="hmLiveSecTitle">① 原始即時讀值</div><div class="hmLiveGrid"><div class="hmLiveItem"><span>D17</span><span><b id="hmX17">—</b> m</span></div><div class="hmLiveItem"><span>D18</span><span><b id="hmX18">—</b> m</span></div></div><div class="hmLiveWide"><span>目前滑座 x</span><span><b id="hmXPos">—</b> m</span></div></div><div class="hmLiveSec"><div class="hmLiveSecTitle">② 直接差值</div><div class="hmLiveWide"><span>D18 − D17</span><span><b id="hmDirect">—</b> m</span></div><div class="hmLiveWide"><span>理想幾何 L − 2x</span><span><b id="hmIdeal">—</b> m</span></div><div class="hmLiveWide"><span>直接差值殘差</span><span><b id="hmDirectResid">—</b> µm</span></div></div><div class="hmLiveSec"><div class="hmLiveSecTitle">③ Eq.(5) 姿態差動殘差</div><div class="hmLiveGrid"><div class="hmLiveItem"><span>δ₁₇</span><span><b id="hmA17">—</b> µm</span></div><div class="hmLiveItem"><span>δ₁₈</span><span><b id="hmA18">—</b> µm</span></div></div><div class="hmLiveWide"><span>Δδ=(D17−D18)−(2x−L)</span><span><b id="hmDeltaD">—</b> µm</span></div></div><div id="hmLiveNote">D17 由左端量測、D18 由右端對頂量測，因此直接差值採 D18−D17 時，其殘差與 Eq.(5) 的 Δδ 符號相反；兩者是同一姿態效應的不同符號約定。</div>');
-  const rangeCard=mk('hmRange','<div id="hmRangeHead">測距影響｜三模式（同一位置 x）</div><div class="hmRangeRow" id="hmRow19"><div class="hmRangeTop"><span>① 2019 阿貝效應</span><span><b id="hmR19">—</b> µm</span></div><div class="hmRangeSub">若依 2019 輪廓未補償，這就是位置相關測距效應；最大量值約 34.5 µm @ 3.0 m。</div></div><div class="hmRangeRow" id="hmRow26"><div class="hmRangeTop"><span>② 2026 阿貝效應</span><span><b id="hmR26">—</b> µm</span></div><div class="hmRangeSub">依 2026 現況應施加的相對原點修正；最大量值約 30.5 µm @ 3.5 m。</div></div><div class="hmRangeRow" id="hmRowRes"><div class="hmRangeTop"><span>③ 沿用 2019 後殘留誤差</span><span><b id="hmRRes">—</b> µm</span></div><div class="hmRangeSub">Cβ,2026 − Cβ,2019；在兩次位置正確登錄前提下，最大示意失配約 +47.7 µm @ 3.0 m。</div></div><div id="hmNow"><div id="hmNowLab">目前模式的測距影響</div><div><span id="hmNowVal">—</span> <span id="hmNowUnit">µm</span></div></div><div id="hmRangeNote">①②顯示的是「需要被補償的阿貝效應」，正確補償後不等於殘留誤差；③才是「2026 現況仍沿用 2019 舊補償」時留下的殘留測距誤差。</div>');
+  const liveCard=mk('hmLive','<div id="hmLiveHead">D17 / D18 原理示意讀值</div><div class="hmLiveSec"><div class="hmLiveSecTitle">① 模型產生的示意讀值</div><div class="hmLiveGrid"><div class="hmLiveItem"><span>D17</span><span><b id="hmX17">—</b> m</span></div><div class="hmLiveItem"><span>D18</span><span><b id="hmX18">—</b> m</span></div></div><div class="hmLiveWide"><span>目前滑座 x</span><span><b id="hmXPos">—</b> m</span></div></div><div class="hmLiveSec"><div class="hmLiveSecTitle">② 直接差值</div><div class="hmLiveWide"><span>D18 − D17</span><span><b id="hmDirect">—</b> m</span></div><div class="hmLiveWide"><span>理想幾何 L − 2x</span><span><b id="hmIdeal">—</b> m</span></div><div class="hmLiveWide"><span>直接差值殘差</span><span><b id="hmDirectResid">—</b> µm</span></div></div><div class="hmLiveSec"><div class="hmLiveSecTitle">③ 姿態差動殘差（原理示意）</div><div class="hmLiveGrid"><div class="hmLiveItem"><span>δ₁₇</span><span><b id="hmA17">—</b> µm</span></div><div class="hmLiveItem"><span>δ₁₈</span><span><b id="hmA18">—</b> µm</span></div></div><div class="hmLiveWide"><span>Δδ=(D17−D18)−(2x−L)</span><span><b id="hmDeltaD">—</b> µm</span></div></div><div id="hmLiveNote">此區保留舊版對頂光路模型，讀值為模擬值，未與表 9 年度資料同步；偏擺角為合成示意。論文的雙光路幾何與俯仰角反算將另行同步，年度比較請以下方表 9 資料為準。</div>');
+  const rangeCard=mk('hmRange','<div id="hmRangeHead">俯仰角修正｜表 9 共同測站 x</div><div class="hmRangeRow" id="hmRow19"><div class="hmRangeTop"><span>① 2019 俯仰角修正 Cβ</span><span><b id="hmR19">—</b> µm</span></div><div class="hmRangeSub">表 9 的 2019 電子水平儀平均值；以表 9 首站為基準，d_z＝85 mm。</div></div><div class="hmRangeRow" id="hmRow26"><div class="hmRangeTop"><span>② 2026 俯仰角修正 Cβ</span><span><b id="hmR26">—</b> µm</span></div><div class="hmRangeSub">表 9 的 2026 電子水平儀平均值；採相同共同測站及基準，d_z＝85 mm。</div></div><div class="hmRangeRow" id="hmRowRes"><div class="hmRangeTop"><span>③ 俯仰角修正差值 ΔCβ</span><span><b id="hmRRes">—</b> µm</span></div><div class="hmRangeSub">ΔCβ＝Cβ,2026−Cβ,2019；由表 9 列值計算，共同測站最大絕對差值約 6.8 µm（帶號為 −6.8 µm）。</div></div><div id="hmNow"><div id="hmNowLab">目前年度原資料的阿貝效應</div><div><span id="hmNowVal">—</span> <span id="hmNowUnit">µm</span></div></div><div id="hmRangeNote">此處依電子水平儀資料比較俯仰角項，假設兩年偏擺角相同。圖中數值為修正差值估計，未合成其不確定度；不能據此單獨判定軌道健康狀態。</div>');
   const titleCard=document.getElementById('title');
-  colL.insertBefore(modeCard,titleCard.nextSibling);colL.insertBefore(chartCard,modeCard.nextSibling);colL.insertBefore(focusCard,chartCard.nextSibling);
+  colL.insertBefore(dataNotice,titleCard.nextSibling);colL.insertBefore(modeCard,dataNotice.nextSibling);colL.insertBefore(chartCard,modeCard.nextSibling);colL.insertBefore(focusCard,chartCard.nextSibling);
   const panel=document.getElementById('panel');colR.insertBefore(rangeCard,panel);colR.insertBefore(liveCard,rangeCard);
 
   const wrap=document.getElementById('wrap');const tag=document.createElement('div');tag.id='hm3DTag';wrap.appendChild(tag);
-  const read=document.getElementById('read');const extra=document.createElement('div');extra.id='hmRead';extra.innerHTML='<span class="lab">Cβ,2019</span> <span class="c" id="hmC19">—</span> µm<br><span class="lab">Cβ,2026</span> <span class="c" id="hmC26">—</span> µm<br><span class="lab">舊補償殘差</span> <span class="res" id="hmRes">—</span> µm';read.appendChild(extra);
-  const note=document.getElementById('note');note.innerHTML='真正進入 0→x 長度結果的是 <b>Cβ(0,x)=85[β(x)−β(0)]</b>。右側上方新增 D17/D18 原始即時讀值與直接差值；下方「測距影響」卡固定同時顯示三種口徑。';
+  const read=document.getElementById('read');const extra=document.createElement('div');extra.id='hmRead';extra.innerHTML='<span class="lab">Cβ,2019（表 9）</span> <span class="c" id="hmC19">—</span> µm<br><span class="lab">Cβ,2026（表 9）</span> <span class="c" id="hmC26">—</span> µm<br><span class="lab">俯仰角修正差值</span> <span class="res" id="hmRes">—</span> µm';read.appendChild(extra);
+  const note=document.getElementById('note');note.innerHTML='年度比較使用表 9 的電子水平儀資料，以 <b>Cβ(0,x)=85[β(x)−β(0)]</b> 計算（β 單位 mm/m，結果 µm）。假設 <b>γ2019＝γ2026</b>，則偏擺角修正的年度變化為零；這與單次雙光路俯仰角反算的輸入條件不同。';
 
   const scope=document.getElementById('scopeCard');
   if(scope){
@@ -123,10 +131,10 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 
   const cv=document.getElementById('hmChart'),cx=cv.getContext('2d');
   function drawChart(x){
-    const W=cv.width,H=cv.height,L=48,R=10,T=10,B=27,xp=z=>L+(W-L-R)*z/10;
+    const W=cv.width,H=cv.height,L=48,R=10,T=10,B=27,xp=z=>L+(W-L-R)*z/COMMON_MAX;
     cx.clearRect(0,0,W,H);cx.fillStyle='#0b1117';cx.fillRect(0,0,W,H);
     cx.fillStyle=mode==='legacy'?'rgba(255,74,61,.09)':'rgba(242,179,61,.08)';cx.fillRect(xp(2.75),T,xp(3.75)-xp(2.75),H-T-B);
-    const xs=D26.pos,c19=xs.map(z=>corr(D19,z)),c26=xs.map(z=>corr(D26,z)),res=xs.map((z,i)=>c26[i]-c19[i]);
+    const xs=D19.pos,c19=xs.map(z=>corr(D19,z)),c26=xs.map(z=>corr(D26,z)),res=xs.map((z,i)=>c26[i]-c19[i]);
     let curves=[];
     if(mode==='2019')curves=[{v:c19,c:'#4D9BE8',dash:[]}];
     else if(mode==='2026')curves=[{v:c19,c:'#6f8dab',dash:[4,3]},{v:c26,c:'#37C79A',dash:[]}];
@@ -134,11 +142,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
     let vals=curves.flatMap(q=>q.v),mn=Math.min(...vals),mx=Math.max(...vals),sp=Math.max(mx-mn,20);mn-=sp*.14;mx+=sp*.14;
     const yp=y=>T+(H-T-B)*(1-(y-mn)/(mx-mn));
     cx.strokeStyle='#2A3A4C';cx.lineWidth=1;cx.setLineDash([]);cx.beginPath();cx.moveTo(L,T);cx.lineTo(L,H-B);cx.lineTo(W-R,H-B);cx.stroke();
-    cx.font='10px Consolas';cx.fillStyle='#708294';for(let z=0;z<=10;z+=2)cx.fillText(z+'m',xp(z)-7,H-8);
+    cx.font='10px Consolas';cx.fillStyle='#708294';for(let z=0;z<=COMMON_MAX;z+=3)cx.fillText(z+'m',xp(z)-7,H-8);
     for(let k=0;k<5;k++){let v=mn+(mx-mn)*k/4,y=yp(v);cx.strokeStyle='rgba(90,110,128,.16)';cx.beginPath();cx.moveTo(L,y);cx.lineTo(W-R,y);cx.stroke();cx.fillStyle='#708294';cx.fillText(v.toFixed(0),4,y+3)}
     if(mn<0&&mx>0){cx.strokeStyle='rgba(217,228,238,.22)';cx.setLineDash([2,3]);cx.beginPath();cx.moveTo(L,yp(0));cx.lineTo(W-R,yp(0));cx.stroke()}
     curves.forEach((q,j)=>{cx.strokeStyle=q.c;cx.lineWidth=(mode==='legacy'&&j===2)?2.5:1.8;cx.setLineDash(q.dash);cx.beginPath();xs.forEach((z,i)=>{i?cx.lineTo(xp(z),yp(q.v[i])):cx.moveTo(xp(z),yp(q.v[i]))});cx.stroke();cx.setLineDash([])});
-    cx.strokeStyle='#F2B33D';cx.setLineDash([4,2]);cx.beginPath();cx.moveTo(xp(x),T);cx.lineTo(xp(x),H-B);cx.stroke();cx.setLineDash([]);
+    if(x<=COMMON_MAX){cx.strokeStyle='#F2B33D';cx.setLineDash([4,2]);cx.beginPath();cx.moveTo(xp(x),T);cx.lineTo(xp(x),H-B);cx.stroke();cx.setLineDash([]);}
   }
 
   function setMode(m){
@@ -148,11 +156,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
     document.getElementById(m==='2019'?'hmRow19':m==='2026'?'hmRow26':'hmRowRes').classList.add(m==='2019'?'sel19':m==='2026'?'sel26':'selRes');
     const h=document.getElementById('hmChartTitle'),e=document.getElementById('hmExplain'),lg=document.getElementById('hmLegend'),fh=document.getElementById('hmFocusHead'),fm=document.getElementById('hmFocusMain'),fs=document.getElementById('hmFocusSub'),now=document.getElementById('hmNowLab');
     if(m==='2019'){
-      h.textContent='① 2019：相對原點阿貝效應';e.innerHTML='看<b style="color:#F2B33D">3.0 m 黃色區</b>：Cβ(0,3 m) 約 <b style="color:#4D9BE8">−34.5 µm</b>。';lg.textContent='藍線＝2019 Cβ；黃直線＝目前滑座位置。';fh.textContent='差異看這裡｜2019 基準';fm.textContent='3.0 m：Cβ ≈ −34.5 µm';fs.textContent='3D 只顯示藍色姿態線；黃色窄區就是 3.0 m。';tag.textContent='3D 看這裡：3.0 m｜藍線＝2019';now.textContent='目前模式：2019 阿貝效應';band.position.x=-2;band.scale.x=.48;bandMat.color.setHex(0xF2B33D);
+      h.textContent='① 2019：共同測站的俯仰角修正';e.textContent='依論文第 8 版表 9 的十個測站平均值計算，以表 9 首站為基準。';lg.textContent='藍線＝2019 Cβ；黃直線＝表 9 測站座標 x。';fh.textContent='資料來源｜2019';fm.textContent='電子水平儀｜表 9';fs.textContent='3D 姿態為示意；有效年度比較範圍為表 9 的 0–9 m。';tag.textContent='2019 共同測站｜電子水平儀資料';now.textContent='目前模式：2019 俯仰角修正';band.position.x=-2;band.scale.x=.48;bandMat.color.setHex(0xF2B33D);
     }else if(m==='2026'){
-      h.textContent='② 2026：2019 / 2026 阿貝效應疊圖';e.innerHTML='看<b style="color:#F2B33D">3.0–3.5 m</b>：2026 最大量值移到 3.5 m，約 <b style="color:#37C79A">−30.5 µm</b>。';lg.textContent='灰藍虛線＝2019；綠線＝2026；黃直線＝目前位置。';fh.textContent='差異看這裡｜2026 vs 2019';fm.textContent='谷底取樣由 3.0 m 移到 3.5 m';fs.textContent='看圖上藍綠曲線與 3D 藍綠姿態線的分離。';tag.textContent='3D 看這裡：3.0–3.5 m｜藍＝2019　綠＝2026';now.textContent='目前模式：2026 應補償阿貝效應';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0x37C79A);
+      h.textContent='② 2026：共同測站俯仰角修正疊圖';e.textContent='兩年度使用表 9 的相同測站，以各自首站為基準；電子水平儀的零點差在端點差中消去。';lg.textContent='灰藍虛線＝2019 Cβ；綠線＝2026 Cβ；線段為插值。';fh.textContent='比較前提｜2019 與 2026';fm.textContent='假設偏擺角不變';fs.textContent='此假設用於年度 LSCS 修正比較；單次雙光路反算另依論文式（4）處理偏擺角輸入。';tag.textContent='共同測站疊圖｜假設兩年偏擺角相同';now.textContent='目前模式：2026 俯仰角修正';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0x37C79A);
     }else{
-      h.textContent='③ 沿用 2019 舊補償：紅線＝殘留';e.innerHTML='紅線＝<b style="color:#FF4A3D">Cβ,2026−Cβ,2019</b>；在位置正確登錄前提下，3.0 m 示意失配約 <b style="color:#FF4A3D">+47.7 µm</b>。';lg.textContent='藍＝2019 舊補償；綠＝2026 應補償；紅＝未更新補償殘留。';fh.textContent='差異看這裡｜不監測／不更新補償';fm.textContent='3.0 m：殘留失配 ≈ +47.7 µm';fs.textContent='紅線與 3D 紅色差異段就是準確度風險。';tag.textContent='3D 看藍綠姿態線分離｜紅段＝補償失配';now.textContent='目前模式：沿用舊補償後殘留測距誤差';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0xFF4A3D);
+      h.textContent='③ 年度比較：俯仰角修正差值 ΔCβ';e.textContent='紅線＝Cβ,2026−Cβ,2019；依表 9 共同測站計算，並假設兩年偏擺角相同。';lg.textContent='藍＝2019 Cβ；綠＝2026 Cβ；紅＝俯仰角修正差值估計。';fh.textContent='共同測站最大絕對差值';fm.textContent=fmt(peakDiff,1)+' µm｜x＝'+peakX.toFixed(0)+' m';fs.textContent='依表 9 列值計算；位置為表 9 的座標。未合成差值不確定度，不作獨立健康判定。';tag.textContent='紅線＝俯仰角修正差值｜假設偏擺角不變';now.textContent='目前模式：俯仰角修正差值';band.position.x=-1.75;band.scale.x=1;bandMat.color.setHex(0xF2B33D);
     }
     drawChart(window.__platX||0);
   }
@@ -193,15 +201,15 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
   }
 
   function tick(){
-    const x=window.__platX||0,d=mode==='2019'?D19:D26,mu=mean(d.mean),b=lerp(x,d.pos,d.mean),dev=b-mu;
+    const x=window.__platX||0,valid=x>=0&&x<=COMMON_MAX,d=mode==='2019'?D19:D26,mu=mean(d.mean),b=lerp(x,d.pos,d.mean),dev=b-mu;
     if(typeof stage!=='undefined'&&typeof S!=='undefined'&&S.p)stage.rotation.z=-Math.max(-.20,Math.min(.20,dev/.55*.20));
     const a19=vis(lerp(x,D19.pos,D19.mean)-mean(D19.mean)),a26=vis(lerp(x,D26.pos,D26.mean)-mean(D26.mean));
-    const xb=x-5,y0=1.02,z0=.72;l19.position.set(xb,y0,z0);l26.position.set(xb,y0,z0);l19.rotation.z=-a19;l26.rotation.z=-a26;l19.visible=true;l26.visible=mode!=='2019';l19.material.opacity=mode==='2019'?.95:.55;l26.material.opacity=.95;
-    const ex=.72,p1=new THREE.Vector3(xb+ex*Math.cos(a19),y0-ex*Math.sin(a19),z0),p2=new THREE.Vector3(xb+ex*Math.cos(a26),y0-ex*Math.sin(a26),z0);lDelta.geometry.setFromPoints([p1,p2]);lDelta.visible=mode==='legacy';
+    const xb=x-5,y0=1.02,z0=.72;l19.position.set(xb,y0,z0);l26.position.set(xb,y0,z0);l19.rotation.z=-a19;l26.rotation.z=-a26;l19.visible=valid;l26.visible=valid&&mode!=='2019';l19.material.opacity=mode==='2019'?.95:.55;l26.material.opacity=.95;
+    const ex=.72,p1=new THREE.Vector3(xb+ex*Math.cos(a19),y0-ex*Math.sin(a19),z0),p2=new THREE.Vector3(xb+ex*Math.cos(a26),y0-ex*Math.sin(a26),z0);lDelta.geometry.setFromPoints([p1,p2]);lDelta.visible=false;
     const c19=corr(D19,x),c26=corr(D26,x),res=c26-c19;
-    document.getElementById('hmC19').textContent=fmt(c19,1);document.getElementById('hmC26').textContent=fmt(c26,1);document.getElementById('hmRes').textContent=fmt(res,1);
-    document.getElementById('hmR19').textContent=fmt(c19,1);document.getElementById('hmR26').textContent=fmt(c26,1);document.getElementById('hmRRes').textContent=fmt(res,1);
-    const now=mode==='2019'?c19:mode==='2026'?c26:res;const nv=document.getElementById('hmNowVal');nv.textContent=fmt(now,1);nv.style.color=mode==='2019'?'#4D9BE8':mode==='2026'?'#37C79A':'#FF4A3D';
+    document.getElementById('hmC19').textContent=valid?fmt(c19,1):'—';document.getElementById('hmC26').textContent=valid?fmt(c26,1):'—';document.getElementById('hmRes').textContent=valid?fmt(res,1):'—';
+    document.getElementById('hmR19').textContent=valid?fmt(c19,1):'—';document.getElementById('hmR26').textContent=valid?fmt(c26,1):'—';document.getElementById('hmRRes').textContent=valid?fmt(res,1):'—';
+    const now=mode==='2019'?c19:mode==='2026'?c26:res;const nv=document.getElementById('hmNowVal');nv.textContent=valid?fmt(now,1):'超出 0–9 m';nv.style.fontSize=valid?'28px':'18px';nv.style.color=mode==='2019'?'#4D9BE8':mode==='2026'?'#37C79A':'#FF4A3D';document.getElementById('hmNowUnit').textContent=valid?'µm':'';
     const rb=document.getElementById('rB'),re=document.getElementById('rE');if(rb)rb.textContent=fmt(b*1000,0);if(re)re.textContent=fmt(85*b,1);
     updateLiveReadout(x);drawChart(x);drawWidthOverlay();requestAnimationFrame(tick);
   }

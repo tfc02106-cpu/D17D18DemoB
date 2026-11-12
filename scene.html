@@ -68,6 +68,9 @@ button.on .dot{opacity:1}
 #scopeClose:hover{color:var(--tx);border-color:var(--tx3)}
 #focusScenario{margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:7px;font-size:11px;color:var(--tx2)}
 #focusScenario label{display:block;margin-bottom:6px}
+#scopeCard .focusModes{display:flex;gap:6px;margin-bottom:8px}
+#scopeCard .focusModes button{font-size:11px;justify-content:center;padding:6px 3px}
+#scopeCard .focusModes button.on{border-color:var(--yaw);color:var(--yaw)}
 #focusScenario .focusControls{display:flex;align-items:center;gap:8px}
 #fDefocusRange{flex:1;min-width:0;accent-color:var(--pitch)}
 #fDefocusInput{width:64px;padding:5px;background:#0b1015;border:1px solid var(--line);border-radius:5px;color:var(--tx);font-family:var(--mono)}
@@ -160,12 +163,16 @@ body.hideR #colR{transform:translateX(calc(100% + 30px));opacity:0;pointer-event
     <div id="scopeHd">
       <div>
         <div style="font-size:12px;color:var(--tx2);letter-spacing:.14em">顯微鏡視野｜離焦敏感度示意</div>
-        <div style="font-size:11px;color:var(--tx3);margin-top:2px">獨立手動情境｜10×｜視野 880 µm</div>
+        <div style="font-size:11px;color:var(--tx3);margin-top:2px">曲線連動／手動｜10×｜視野 880 µm</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="grip">⠿</span>
         <button id="scopeClose" title="隱藏(可由右側面板再開啟)">×</button>
       </div>
+    </div>
+    <div class="focusModes">
+      <button id="fAuto" class="on" aria-pressed="true">自動連動（預設）</button>
+      <button id="fManual" aria-pressed="false">手動離焦</button>
     </div>
     <canvas id="scopeCv" width="272" height="132" style="display:block;width:100%;height:132px;border-radius:6px;background:#080b0e"></canvas>
     <div style="font-size:10px;color:var(--tx3);margin:6px 0 2px">強度剖面(CCD 判讀依據)</div>
@@ -177,19 +184,19 @@ body.hideR #colR{transform:translateX(calc(100% + 30px));opacity:0;pointer-event
       離焦/景深 <b id="fR" style="color:var(--tx2)">0.0</b>×|左緣位移 <b id="fE" style="color:var(--laser)">0.0</b> µm
     </div>
     <div id="focusScenario">
-      <label for="fDefocusInput">手動設定示意離焦量 Δz</label>
+      <label id="focusControlLabel" for="fDefocusInput">示意離焦幅度 A</label>
       <div class="focusControls">
-        <input id="fDefocusRange" type="range" min="-500" max="500" step="1" value="0" aria-label="示意離焦滑桿">
-        <input id="fDefocusInput" type="number" min="-500" max="500" step="1" value="0" aria-label="示意離焦量"><span>µm</span>
+        <input id="fDefocusRange" type="range" min="0" max="500" step="1" value="300" aria-label="示意離焦滑桿">
+        <input id="fDefocusInput" type="number" min="0" max="500" step="1" value="300" aria-label="示意離焦設定"><span>µm</span>
       </div>
-      <div id="focusScenarioState" role="status">對焦基準（示意）</div>
+      <div id="focusScenarioState" role="status">等待曲線資料</div>
     </div>
     <div class="row2" style="margin-top:8px">
-      <button id="fFocus">回到對焦 Δz＝0</button>
+      <button id="fFocus">在此對焦</button>
       <button id="fNA">NA 0.28 / 0.05</button>
     </div>
     <div id="focusScenarioNote" style="font-size:10px;color:var(--tx3);margin-top:6px;line-height:1.5">
-      預設示意離焦為 0；滑台移動或切換年度不會自動改變模糊。此窗使用手動情境，未由表 9 俯仰角推算實際離焦量，亦不代表各測站的實測清晰度。可調整離焦量觀察刻線展寬。模糊直徑由 2·NA·|Δz| 與 1.22λ/NA 平方和開根號合成；刻線寬 150 µm。
+      自動模式將主頁所選曲線正規化後映射為示意離焦，預設幅度 A＝300 µm；這是可調的視覺示意，並非由俯仰角反算實際高度或離焦量。移動平台可觀察清晰與模糊變化；手動模式可固定離焦量。自動連動限表 9 的 0–9 m。刻線寬 150 µm。
     </div>
   </div>
   <div class="hud" id="cap">平台繞三軸的微小轉動,經<b style="color:var(--roll)">阿貝臂</b>放大為量測誤差 δX。試著只開 <b style="color:var(--roll)">Roll</b>(關閉實測模式後):平台明顯轉動,但 δX 維持 0 —— 這就是 X 向干涉儀對 Roll 一階不敏感、必須另設電子水平儀的原因。</div>
@@ -937,7 +944,7 @@ requestAnimationFrame(animate);
   });
 })();
 
-/* ===== 顯微鏡視野：獨立手動離焦情境，與軌道位置及年度資料分開 ===== */
+/* ===== 顯微鏡視野：曲線正規化連動示意／獨立手動離焦 ===== */
 (function () {
   var cv = document.getElementById('scopeCv'); if (!cv) return;
   var ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
@@ -948,7 +955,9 @@ requestAnimationFrame(animate);
   var NA  = 0.28;              // 數值孔徑
   var FOV = 880;               // µm,2/3" 感測器橫向視野
   var LINEW = 150;             // µm,刻線寬
-  var defocusUm = 0;           // 手動情境值；不是位置對應的量測資料
+  var defocusUm = 0;           // 手動示意值
+  var autoFocus = true, amplitudeUm = 300;
+  var focusRef = 0, focusSource = null;
   var UM_PX = FOV / W;         // µm per pixel
 
   function dof() { return LAM / (NA * NA); }
@@ -968,7 +977,22 @@ requestAnimationFrame(animate);
   }
 
   function draw(m) {
-    var dz = defocusUm;
+    var sample = autoFocus && window.__scopeScenario ? window.__scopeScenario(m) : null;
+    var valid = !autoFocus || (sample && sample.valid);
+    var state = document.getElementById('focusScenarioState');
+    document.getElementById('fX').textContent = m.toFixed(2);
+    document.getElementById('fD').textContent = dof().toFixed(1);
+    if (!valid) {
+      ctx.clearRect(0, 0, W, H); px.clearRect(0, 0, PW, PH);
+      ctx.fillStyle = '#8FA1B3'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(sample ? '超出共同測站 0–9 m' : '等待主頁曲線資料', W / 2, H / 2); ctx.textAlign = 'left';
+      ['fZ','fB','fR','fE'].forEach(function(id){document.getElementById(id).textContent='—';});
+      state.textContent = sample ? '超出資料範圍，暫停連動；返回 0–9 m 即恢復' : '請從主頁啟動自動連動，或切換手動離焦';
+      state.style.color = '#F2B33D';
+      return;
+    }
+    if (autoFocus && focusSource !== sample.key) { focusRef = 0; focusSource = sample.key; }
+    var dz = autoFocus ? amplitudeUm * (sample.fraction - focusRef) : defocusUm;
     var Bgeo = 2 * NA * Math.abs(dz);           // 幾何模糊直徑 µm
     var Bdif = 1.22 * LAM / NA;                 // 繞射斑 µm
     var B = Math.sqrt(Bgeo * Bgeo + Bdif * Bdif);
@@ -1032,8 +1056,7 @@ requestAnimationFrame(animate);
     var fz = document.getElementById('fZ');
     fz.textContent = (dz >= 0 ? '+' : '') + dz.toFixed(0);
     fz.style.color = Math.abs(dz) > dof() ? '#FF4A3D' : '#37C79A';
-    var state = document.getElementById('focusScenarioState');
-    state.textContent = dz === 0 ? '對焦基準（示意）' : '手動離焦情境（與滑台位置分開）';
+    state.textContent = autoFocus ? sample.label + '｜正規化連動示意' : '手動離焦（固定，不隨位置變化）';
     state.style.color = Math.abs(dz) > dof() ? '#F2B33D' : '#37C79A';
     document.getElementById('fB').textContent = B.toFixed(1);
     document.getElementById('fD').textContent = dof().toFixed(1);
@@ -1080,17 +1103,38 @@ requestAnimationFrame(animate);
     addEventListener('mouseup', function () { drag = false; });
   })();
   setOn(true);
+  function syncControls() {
+    ['fAuto','fManual'].forEach(function(id,i){
+      var on = i === 0 ? autoFocus : !autoFocus, b = document.getElementById(id);
+      b.classList.toggle('on',on); b.setAttribute('aria-pressed',String(on));
+    });
+    document.getElementById('focusControlLabel').textContent = autoFocus ? '示意離焦幅度 A' : '手動設定示意離焦量 Δz';
+    ['fDefocusRange','fDefocusInput'].forEach(function(id){
+      var el = document.getElementById(id); el.min = autoFocus ? '0' : '-500';
+      el.value = String(autoFocus ? amplitudeUm : defocusUm);
+    });
+  }
+  document.getElementById('fAuto').onclick = function () { autoFocus = true; focusRef = 0; focusSource = null; syncControls(); draw(window.__platX || 0); };
+  document.getElementById('fManual').onclick = function () { autoFocus = false; syncControls(); draw(window.__platX || 0); };
   function setDefocus(value) {
+    if (value === '') return;
     var n = Number(value);
     if (!Number.isFinite(n)) return;
-    defocusUm = Math.max(-500, Math.min(500, Math.round(n)));
-    document.getElementById('fDefocusRange').value = String(defocusUm);
-    document.getElementById('fDefocusInput').value = String(defocusUm);
+    if (autoFocus) amplitudeUm = Math.max(0, Math.min(500, Math.round(n)));
+    else defocusUm = Math.max(-500, Math.min(500, Math.round(n)));
+    syncControls();
     draw(window.__platX || 0);
   }
   document.getElementById('fDefocusRange').addEventListener('input', function () { setDefocus(this.value); });
   document.getElementById('fDefocusInput').addEventListener('input', function () { setDefocus(this.value); });
-  document.getElementById('fFocus').onclick = function () { setDefocus(0); };
+  document.getElementById('fFocus').onclick = function () {
+    if (autoFocus) {
+      var sample = window.__scopeScenario && window.__scopeScenario(window.__platX || 0);
+      if (!sample || !sample.valid) return;
+      focusRef = sample.fraction; focusSource = sample.key;
+    } else { defocusUm = 0; syncControls(); }
+    draw(window.__platX || 0);
+  };
   document.getElementById('fNA').onclick = function () {
     NA = (NA === 0.28) ? 0.05 : 0.28;
     this.textContent = 'NA ' + NA.toFixed(2) + ' → 切換';

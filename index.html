@@ -12,7 +12,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 </head>
 <body>
 <div id="loading">載入原版 D17/D18 3D 場景…</div>
-<iframe id="scene" src="scene.html" title="D17 / D18 3D scene"></iframe>
+<iframe id="scene" src="scene.html?v=20261112-focus-auto" title="D17 / D18 3D scene"></iframe>
 <script>
 (function(){
   const frame=document.getElementById('scene');
@@ -87,6 +87,19 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
   const peakDiff=annualDiff[peakIndex],peakX=D19.pos[peakIndex];
   let mode='2026';
 
+  // 曲線形狀到示意離焦的可調映射；不是光學高度反算。
+  const scopeCurves={
+    '2019':{label:'2019 修正曲線',values:D19.pos.map(x=>corr(D19,x))},
+    '2026':{label:'2026 修正曲線',values:D26.pos.map(x=>corr(D26,x))},
+    legacy:{label:'年度修正差值曲線',values:annualDiff}
+  };
+  Object.values(scopeCurves).forEach(q=>q.peak=Math.max(...q.values.map(Math.abs)));
+  window.__scopeScenario=function(x){
+    if(!Number.isFinite(x)||x<0||x>COMMON_MAX)return {valid:false};
+    const q=scopeCurves[mode];
+    return {valid:true,key:mode,label:q.label,fraction:q.peak?lerp(x,D19.pos,q.values)/q.peak:0};
+  };
+
   const oldData=document.getElementById('dataCard'); if(oldData)oldData.style.display='none';
   const oldRange=document.getElementById('rangeCard'); if(oldRange)oldRange.style.display='none';
   const oldCap=document.getElementById('cap'); if(oldCap)oldCap.style.display='none';
@@ -113,12 +126,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
   const scope=document.getElementById('scopeCard');
   if(scope){
     const focusNote=document.getElementById('focusScenarioNote');
-    if(focusNote)focusNote.textContent='預設示意離焦 Δz＝0，滑台移動與年度切換不改變此設定。可手動調整離焦量觀察模糊；此窗未由表 9 俯仰角推算離焦量，不代表各測站的實測清晰度。';
+    if(focusNote)focusNote.textContent='自動模式隨平台位置與所選曲線變化：Δz＝A×[C(x)−C(x焦點)]／max|C|，預設以首站對焦、A＝300 µm。這是曲線形狀的正規化視覺示意，並非實際高度或離焦的反算；不代表實測影像。可切換手動離焦；自動連動限表 9 的 0–9 m。';
     const sc=document.getElementById('scopeCv');
     const sw=document.createElement('div');sw.id='hmScopeWrap';sc.parentNode.insertBefore(sw,sc);sw.appendChild(sc);
     const ov=document.createElement('canvas');ov.id='hmScopeOv';ov.width=sc.width;ov.height=sc.height;sw.appendChild(ov);
     const wr=document.createElement('div');wr.id='hmWidthRead';wr.innerHTML='<span class="w50">W50</span> <b id="hmW50">—</b> µm　<span class="w90">W90</span> <b id="hmW90">—</b> µm<br><span class="dw">ΔW90(相對對焦)</span> <b id="hmDW90">—</b> µm';
-    const wn=document.createElement('div');wn.id='hmWidthNote';wn.textContent='W50／W90 為手動離焦情境下的 50%／90% 灰階門檻寬度；ΔW90 相對於對焦情境。門檻用於示意，非 D17 現行軟體門檻。';
+    const wn=document.createElement('div');wn.id='hmWidthNote';wn.textContent='W50／W90 為示意影像的 50%／90% 灰階門檻寬度；ΔW90 相對於對焦情境。門檻用於示意，非 D17 現行軟體門檻。';
     const prof=document.getElementById('profCv');prof.parentNode.insertBefore(wr,prof.nextSibling);wr.parentNode.insertBefore(wn,wr.nextSibling);
   }
 
@@ -172,7 +185,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
   function widthAt(th,B){var sig=B/2.355;if(profile(0,sig)>=th)return NaN;var lo=0,hi=440;for(var i=0;i<45;i++){var md=(lo+hi)/2;if(profile(md,sig)<th)lo=md;else hi=md}return 2*(lo+hi)/2}
   function drawWidthOverlay(){
     const ov=document.getElementById('hmScopeOv');if(!ov)return;const oc=ov.getContext('2d'),W=ov.width,H=ov.height;oc.clearRect(0,0,W,H);
-    const fb=parseFloat((document.getElementById('fB')||{}).textContent);const fd=parseFloat((document.getElementById('fD')||{}).textContent);if(!isFinite(fb)||!isFinite(fd))return;
+    const fb=parseFloat((document.getElementById('fB')||{}).textContent);const fd=parseFloat((document.getElementById('fD')||{}).textContent);if(!isFinite(fb)||!isFinite(fd)){['hmW50','hmW90','hmDW90'].forEach(id=>document.getElementById(id).textContent='—');return;}
     const w50=widthAt(.5,fb),w90=widthAt(.9,fb);const na=Math.sqrt(.55/fd),b0=1.22*.55/na,w90_0=widthAt(.9,b0),dw=w90-w90_0;
     const umpx=880/W,cx=W/2;
     function vline(x,col,dash){oc.save();oc.strokeStyle=col;oc.lineWidth=1.4;oc.setLineDash(dash||[]);oc.beginPath();oc.moveTo(x,10);oc.lineTo(x,H-8);oc.stroke();oc.restore()}

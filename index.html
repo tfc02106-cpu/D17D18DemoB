@@ -112,12 +112,13 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0B1015}
 
   const scope=document.getElementById('scopeCard');
   if(scope){
-    scope.querySelectorAll('div').forEach(e=>{if(e.textContent.includes('0812 實測積分'))e.textContent='離焦量為敏感度情境，非目前 D17 實測離焦輪廓；50% / 90% 寬度用來量化模糊帶展寬。'});
+    const focusNote=document.getElementById('focusScenarioNote');
+    if(focusNote)focusNote.textContent='預設示意離焦 Δz＝0，滑台移動與年度切換不改變此設定。可手動調整離焦量觀察模糊；此窗未由表 9 俯仰角推算離焦量，不代表各測站的實測清晰度。';
     const sc=document.getElementById('scopeCv');
     const sw=document.createElement('div');sw.id='hmScopeWrap';sc.parentNode.insertBefore(sw,sc);sw.appendChild(sc);
     const ov=document.createElement('canvas');ov.id='hmScopeOv';ov.width=sc.width;ov.height=sc.height;sw.appendChild(ov);
     const wr=document.createElement('div');wr.id='hmWidthRead';wr.innerHTML='<span class="w50">W50</span> <b id="hmW50">—</b> µm　<span class="w90">W90</span> <b id="hmW90">—</b> µm<br><span class="dw">ΔW90(相對對焦)</span> <b id="hmDW90">—</b> µm';
-    const wn=document.createElement('div');wn.id='hmWidthNote';wn.textContent='W50＝50% 灰階強度門檻寬度；W90＝90% 灰階強度門檻表觀寬度。50% / 90% 為敏感度分析門檻，非宣稱 D17 現行軟體門檻。';
+    const wn=document.createElement('div');wn.id='hmWidthNote';wn.textContent='W50／W90 為手動離焦情境下的 50%／90% 灰階門檻寬度；ΔW90 相對於對焦情境。門檻用於示意，非 D17 現行軟體門檻。';
     const prof=document.getElementById('profCv');prof.parentNode.insertBefore(wr,prof.nextSibling);wr.parentNode.insertBefore(wn,wr.nextSibling);
   }
 
